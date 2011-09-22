@@ -1,0 +1,13 @@
+Name: yesod-admin
+Version: 0.1
+Synopsis: An admin interface for persistent data
+Homepage: http://github.com/piyush-kurur/yesod-admin
+License: BSD3
+License-file: LICENSE
+Author: Piyush P Kurur
+Maintainer: ppk@cse.iitk.ac.in
+Category: Web, Yesod
+Build-type: Simple
+Cabal-version: >=1.2
+Library
+  Hs-source-dirs: src
