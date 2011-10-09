@@ -14,3 +14,4 @@ Library
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Crud
   Build-depends: base
+               , text
