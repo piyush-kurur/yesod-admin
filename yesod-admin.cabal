@@ -22,6 +22,7 @@ Library
                , Yesod.Admin.Handlers.AdminReadR
                , Yesod.Admin.Handlers.AdminUpdateR
                , Yesod.Admin.Handlers.AdminDeleteR
+               , Yesod.Admin.Dispatch
   Build-depends: base
                , text
                , yesod >=0.9 && <0.10
