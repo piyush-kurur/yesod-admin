@@ -13,6 +13,6 @@ import Yesod.Admin.Subsite
 
 getAdminPageR ::  Yesod master
               => Int   -- ^ The page to view
-              -> GHandler (Admin master v) master RepHtml
+              -> AdminHandler master v RepHtml
 getAdminPageR x = defaultLayout $ do 
               addHamlet [hamlet|This should show the #{x} th page of listing|]

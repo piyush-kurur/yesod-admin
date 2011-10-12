@@ -18,6 +18,6 @@ getAdminDeleteR :: ( Yesod master
                    , SinglePiece (Key b v)
                    )
                 => Key b v  -- ^ The
-                -> GHandler (Admin master v) master RepHtml
+                -> AdminHandler master v RepHtml
 getAdminDeleteR k = defaultLayout $ do 
                addHamlet [hamlet|Should delete object of Id #{toSinglePiece k}|]

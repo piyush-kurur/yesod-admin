@@ -12,5 +12,5 @@ import Yesod
 import Yesod.Admin.Subsite
 
 getAdminCreateR :: Yesod master
-                => GHandler (Admin master v) master RepHtml
+                => AdminHandler master v RepHtml
 getAdminCreateR = defaultLayout $ addHamlet [hamlet|should support creation|]
