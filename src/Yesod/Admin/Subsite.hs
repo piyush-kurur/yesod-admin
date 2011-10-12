@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TypeFamilies         #-}
 {-|
 
 This defines the admin subsite data type. 
@@ -61,3 +62,5 @@ instance SinglePiece (Key backend v)
          renderRoute (AdminReadR   k) = (["read",   toSinglePiece k],[])
          renderRoute (AdminUpdateR k) = (["update", toSinglePiece k],[])
          renderRoute (AdminDeleteR k) = (["delete", toSinglePiece k],[])
+
+type instance Route (Admin master v) = AdminRoute (YesodPersistBackend master) v
