@@ -22,8 +22,7 @@ import Yesod.Admin.Handlers
 
 instance ( Yesod master
          , YesodPersist master
-         , b ~ YesodPersistBackend master
-         , SinglePiece (Key b v)
+         , SinglePiece (AdminId master v)
          ) => YesodDispatch (Admin master v) master where
 
     yesodDispatch adm mkey ps mas rLift = case ps of
