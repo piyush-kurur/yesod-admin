@@ -16,6 +16,12 @@ Library
   Other-modules: Yesod.Admin.Subsite
                , Yesod.Admin.Class
                , Yesod.Admin.Handlers
+               , Yesod.Admin.Handlers.AdminListR
+               , Yesod.Admin.Handlers.AdminPageR
+               , Yesod.Admin.Handlers.AdminCreateR
+               , Yesod.Admin.Handlers.AdminReadR
+               , Yesod.Admin.Handlers.AdminUpdateR
+               , Yesod.Admin.Handlers.AdminDeleteR
   Build-depends: base
                , text
                , yesod >=0.9 && <0.10
