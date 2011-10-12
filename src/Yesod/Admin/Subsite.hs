@@ -9,6 +9,7 @@ This defines the admin subsite data type.
 -}
 module Yesod.Admin.Subsite
        ( Admin
+       , AdminHandler
        , getAdmin
        , AdminRoute(..)
        ) where
@@ -19,6 +20,10 @@ import Yesod
 -- master.
 
 data Admin master v = Admin
+
+-- | A convenient type alias.
+
+type AdminHandler master v a = GHandler (Admin master v) master a
 
 -- | Get a default instance here.
 
