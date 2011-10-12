@@ -1,0 +1,11 @@
+.yesod-admin-listing
+    color: black
+    background: white
+
+.yesod-admin-listing-headers:hover
+    background: #D0D0D0 
+
+.yesod-admin-listing-values-row:hover
+    background: #D0D0D0
+
+    

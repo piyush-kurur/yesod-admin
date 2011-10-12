@@ -19,9 +19,15 @@ import Data.Text(Text)
 import Yesod
 import Yesod.Admin.Subsite
 import Yesod.Admin.Handlers
+import Yesod.Admin.Class
 
 instance ( Yesod master
+         , YesodAdmin master v
          , YesodPersist master
+         , b ~ YesodPersistBackend master
+         , m ~ GGHandler (Admin master v) master IO
+         , PersistEntity v
+         , PersistBackend b m
          , SinglePiece (AdminId master v)
          ) => YesodDispatch (Admin master v) master where
 

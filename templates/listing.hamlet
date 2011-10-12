@@ -1,0 +1,18 @@
+<table .yesod-admin-listing>
+   <tr .yesod-admin-listing-headers>
+      $forall h <-headers
+         <th .yesod-admin-listing-headers-column>
+            #{h}
+      <th colspan=2 .yesod-admin-listing-headers-column>
+          Admin Action
+   <div .yesod-admin-listing-values>
+      $forall v <- values
+         <tr .yesod-admin-listing-values-row>
+               $forall h <-headers
+                  <td .yesod-admin-listing-values-column>
+                     #{columnOf v h}
+            
+            <td .yesod-admin-lisiting-values-column>
+                  <div .yesod-admin-delete-button>Delete
+            <td .yesod-admin-lisiting-values-column>
+                  <div .yesod-admin-modify-button>Modify
