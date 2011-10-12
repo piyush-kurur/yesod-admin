@@ -16,6 +16,7 @@ Library
   Other-modules: Yesod.Admin.Subsite
                , Yesod.Admin.Class
                , Yesod.Admin.Handlers
+               , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.AdminListR
                , Yesod.Admin.Handlers.AdminPageR
                , Yesod.Admin.Handlers.AdminCreateR
