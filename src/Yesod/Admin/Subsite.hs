@@ -29,6 +29,7 @@ getAdmin = Admin
 The route that we want for an admin interfaces is the following
 
 /         list all objects of type v
+/page/#Int                 Show the nth page.
 /create                    C - creation
 /read/#(Key b v)           R - read the associate object
 /update/#(Key b v)         U - Update the associate object
@@ -42,7 +43,8 @@ these generic routes hence we have to code these by hand.
 -- ^ The data type that captures the admin related routes of an
 -- object.
 
-data AdminRoute backend v = AdminListR          -- ^ Route to list the objects
+data AdminRoute backend v = AdminListR          -- ^ Route to list the objects.
+                          | AdminPageR   Int    -- ^ Route to paged listing.
                           | AdminCreateR        -- ^ Route to create an object
                           | AdminReadR   (Key backend v)
                                                 -- ^ Route to view an object
