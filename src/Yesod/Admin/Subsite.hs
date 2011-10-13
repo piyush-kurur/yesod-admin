@@ -9,10 +9,8 @@ This defines the admin subsite data type.
 -}
 module Yesod.Admin.Subsite
        ( Admin
-       , AdminHandler
        , getAdmin
        , AdminRoute(..)
-       , AdminId
        ) where
 
 import Yesod
@@ -21,10 +19,6 @@ import Yesod
 -- master.
 
 data Admin master v = Admin
-
--- | A convenient type alias.
-
-type AdminHandler master v = GHandler (Admin master v) master
 
 -- | Get a default instance here.
 
@@ -70,7 +64,3 @@ instance SinglePiece (Key backend v)
          renderRoute (AdminDeleteR k) = (["delete", toSinglePiece k],[])
 
 type instance Route (Admin master v) = AdminRoute (YesodPersistBackend master) v
-
--- | The key to access the element of type v stored in the master
--- site's database.
-type AdminId master v = Key (YesodPersistBackend master) v

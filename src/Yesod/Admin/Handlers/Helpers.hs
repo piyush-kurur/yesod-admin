@@ -13,6 +13,7 @@ module Yesod.Admin.Handlers.Helpers where
 import Yesod.Admin.Class
 import Yesod.Admin.Crud
 import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 
 {-
 

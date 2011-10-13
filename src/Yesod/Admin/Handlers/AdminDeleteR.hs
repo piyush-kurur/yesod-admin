@@ -11,6 +11,7 @@ module Yesod.Admin.Handlers.AdminDeleteR
        ) where
 import Yesod
 import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 
 getAdminDeleteR :: ( Yesod master
                    , YesodPersist master

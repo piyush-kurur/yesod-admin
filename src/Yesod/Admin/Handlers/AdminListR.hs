@@ -18,7 +18,9 @@ import Text.Cassius
 import Yesod.Admin.Class
 import Yesod.Admin.Crud
 import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 import Yesod.Admin.Handlers.Helpers
+
 
 getAdminListR :: ( Yesod master
                  , YesodAdmin master v

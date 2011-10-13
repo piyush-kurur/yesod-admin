@@ -12,6 +12,7 @@ module Yesod.Admin.Handlers.AdminUpdateR
 
 import Yesod
 import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 
 getAdminUpdateR :: ( Yesod master
                    , YesodPersist master

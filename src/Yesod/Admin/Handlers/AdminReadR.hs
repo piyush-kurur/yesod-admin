@@ -12,6 +12,7 @@ module Yesod.Admin.Handlers.AdminReadR
 
 import Yesod
 import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 
 getAdminReadR :: ( Yesod master
                  , YesodPersist master

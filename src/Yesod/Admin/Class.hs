@@ -6,7 +6,6 @@ Sites with admin interfaces.
 -}
 module Yesod.Admin.Class
        ( YesodAdmin(..)
-       , AdminCRUD
        ) where
 
 import Yesod
@@ -14,10 +13,7 @@ import Yesod.Auth
 
 import Yesod.Admin.Crud
 import Yesod.Admin.Subsite
-
-
--- | A convenient alias for CRUD related to admin sites.
-type AdminCRUD master v  = CRUD (Admin master v) master v
+import Yesod.Admin.Types
 
 {-|
 

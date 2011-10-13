@@ -10,6 +10,7 @@ module Yesod.Admin.Handlers.AdminPageR
 
 import Yesod
 import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 
 getAdminPageR ::  Yesod master
               => Int   -- ^ The page to view

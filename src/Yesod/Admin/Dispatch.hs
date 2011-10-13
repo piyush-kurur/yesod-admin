@@ -20,6 +20,7 @@ import Yesod
 import Yesod.Admin.Subsite
 import Yesod.Admin.Handlers
 import Yesod.Admin.Class
+import Yesod.Admin.Types
 
 instance ( Yesod master
          , YesodAdmin master v
