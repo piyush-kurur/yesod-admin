@@ -41,7 +41,7 @@ instance ( Yesod master
                   ["delete", k]     -> deleteR k
                   _                 -> Nothing
             where run rt act = yesodRunner adm mas rLift mkey (Just rt) act
-                  listR      = runWith run  AdminListR getAdminListR
+                  listR      = runWith run  AdminListR $ getAdminListR rLift
                   pageR   x  = runWith' run AdminPageR getAdminPageR x
                   createR    = runWith  run AdminCreateR getAdminCreateR
                   readR   k  = runWith' run AdminReadR   getAdminReadR   k

@@ -8,11 +8,14 @@
    <div .yesod-admin-listing-values>
       $forall v <- values
          <tr .yesod-admin-listing-values-row>
+           <a href=@{readR v}>
                $forall h <-headers
                   <td .yesod-admin-listing-values-column>
                      #{columnOf v h}
             
             <td .yesod-admin-lisiting-values-column>
+               <a href=@{deleteR v}>
                   <div .yesod-admin-delete-button>Delete
             <td .yesod-admin-lisiting-values-column>
+               <a href=@{modifyR v}>
                   <div .yesod-admin-modify-button>Modify

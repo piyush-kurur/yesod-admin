@@ -30,8 +30,10 @@ getAdminListR :: ( Yesod master
                  , PersistEntity v
                  , PersistBackend b m
                  )
-                 => AdminHandler master v RepHtml
-getAdminListR = withCrud listing
+                 => (Route (Admin master v) -> Route master)
+                           -- ^ How to lift routes to the master site
+                 -> AdminHandler master v RepHtml
+getAdminListR rLift = withCrud $ listing rLift
 
 
 listing :: ( Yesod master
@@ -41,19 +43,19 @@ listing :: ( Yesod master
            , PersistEntity v
            , PersistBackend b m
            )
-       => AdminCRUD master v
+       => (Route (Admin master v) -> Route master)
+       ->  AdminCRUD master v
        -> AdminHandler master v RepHtml
 
-listing crud = do values <- runDB $ selectList filters sorting
-                  defaultLayout $ do addHamlet $(hamletFile "templates/listing.hamlet")
-                                     addCassius $(cassiusFile "templates/listing.cassius")
-                                     addCassius $(cassiusFile "templates/buttons.cassius")
+listing rLift crud = do values <- runDB $ selectList filters sorting
+                        defaultLayout $ 
+                                do addHamlet $(hamletFile "templates/listing.hamlet")
+                                   addCassius $(cassiusFile "templates/listing.cassius")
+                                   addCassius $(cassiusFile "templates/buttons.cassius")
        where ListingStyle headers func = listingStyle crud
              filters    = listingFilter crud
              sorting    = listingSort crud
-             {- FIXME: How to lift these to the master route
-                readR    (k,_) = AdminReadR k
-                deleteR  (k,_) = AdminDeleteR k
-                modifyR  (k,_) = AdminUpdateR k
-             -}
+             readR    (k,_) = rLift $ AdminReadR k
+             deleteR  (k,_) = rLift $ AdminDeleteR k
+             modifyR  (k,_) = rLift $ AdminUpdateR k
              columnOf (_,val) = func val
