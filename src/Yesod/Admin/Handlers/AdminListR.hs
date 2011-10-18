@@ -30,13 +30,20 @@ getAdminListR :: ( Yesod master
                  , PersistEntity v
                  , PersistBackend b m
                  )
-                 => (Route (Admin master v) -> Route master)
-                           -- ^ How to lift routes to the master site
-                 -> AdminHandler master v RepHtml
-getAdminListR rLift = withCrud $ listing rLift
-
+               => AdminHandler master v RepHtml
+getAdminListR  = withCrud listing
 
 listing :: ( Yesod master
+           , YesodPersist master
+           , b ~ YesodPersistBackend master
+           , m ~ GGHandler (Admin master v) master IO
+           , PersistEntity v
+           , PersistBackend b m
+           )
+       => AdminCRUD master v
+       -> AdminHandler master v RepHtml
+
+listingP :: ( Yesod master
            , YesodPersist master
            , b ~ YesodPersistBackend master
            , m ~ GGHandler (Admin master v) master IO
@@ -47,11 +54,14 @@ listing :: ( Yesod master
        ->  AdminCRUD master v
        -> AdminHandler master v RepHtml
 
-listing rLift crud = do values <- runDB $ selectList filters sorting
-                        defaultLayout $ 
-                                do addHamlet $(hamletFile "templates/listing.hamlet")
-                                   addCassius $(cassiusFile "templates/listing.cassius")
-                                   addCassius $(cassiusFile "templates/buttons.cassius")
+listing crud = do rLift <- getRouteToMaster
+                  listingP rLift crud
+
+listingP rLift crud = do values <- runDB $ selectList filters sorting
+                         defaultLayout $ do 
+                            addHamlet  $(hamletFile "templates/listing.hamlet")
+                            addCassius $(cassiusFile "templates/listing.cassius")
+                            addCassius $(cassiusFile "templates/buttons.cassius")
        where ListingStyle headers func = listingStyle crud
              filters    = listingFilter crud
              sorting    = listingSort crud
@@ -59,3 +69,5 @@ listing rLift crud = do values <- runDB $ selectList filters sorting
              deleteR  (k,_) = rLift $ AdminDeleteR k
              modifyR  (k,_) = rLift $ AdminUpdateR k
              columnOf (_,val) = func val
+                       
+                       
