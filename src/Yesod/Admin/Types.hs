@@ -8,6 +8,7 @@ module Yesod.Admin.Types
        ( AdminHandler
        , AdminId
        , AdminCRUD
+       , AdminWidget
        ) where
 
 import Yesod
@@ -18,6 +19,10 @@ import Yesod.Admin.Subsite
 -- | An alias for admin site handler.
 
 type AdminHandler master v = GHandler (Admin master v) master
+
+-- | An alias for widgets of admin sites.
+
+type AdminWidget master v = GWidget (Admin master v) master
 
 {-|
 
