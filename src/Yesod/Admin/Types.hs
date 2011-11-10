@@ -8,6 +8,7 @@ module Yesod.Admin.Types
        ( AdminHandler
        , AdminId
        , AdminKVPair
+       , AdminDB
        , AdminCRUD
        , AdminWidget
        ) where
@@ -43,6 +44,10 @@ type defined.
 -}
 
 type AdminKVPair master v = (AdminId master v, v)
+
+-- | Database action of a admin site
+
+type AdminDB master v = YesodDB (Admin master v) master
 
 -- | An alias for CRUD related to admin sites.
 
