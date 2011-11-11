@@ -13,6 +13,7 @@ Library
   Hs-source-dirs: src
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Crud
+                 , Yesod.Admin.Render
   Other-modules: Yesod.Admin.Subsite
                , Yesod.Admin.Class
                , Yesod.Admin.Types
