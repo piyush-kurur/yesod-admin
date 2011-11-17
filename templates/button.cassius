@@ -1,0 +1,14 @@
+.button
+   padding-top: #{vspace}
+   padding-botton: #{vspace}
+   padding-left: #{hspace}
+   padding-right: #{hspace}
+   border: #{borderWidth} solid #{borderColour}
+
+.delete:hover
+   background: #990000
+   colour    : #FFFFFF
+
+.delete:active
+   background: #990000
+   colour    : #FFFFFF

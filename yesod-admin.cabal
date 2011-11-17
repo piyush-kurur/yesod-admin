@@ -13,6 +13,7 @@ Library
   Hs-source-dirs: src
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Render
+                 , Yesod.Admin.Render.Defaults
   Other-modules: Yesod.Admin.Subsite
                , Yesod.Admin.Class
                , Yesod.Admin.Types
@@ -27,6 +28,7 @@ Library
                , Yesod.Admin.Dispatch
   Build-depends: base
                , text
+               , blaze-html
                , yesod >=0.9 && <0.10
                , yesod-auth >=0.7 && <0.8
                , shakespeare-css >=0.10 && <0.11

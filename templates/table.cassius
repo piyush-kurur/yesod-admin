@@ -1,0 +1,36 @@
+:link
+           color: #{penColour}
+           text-decoration: none
+table.admin
+   border-collapse: collapse
+   border: #{borderWidth} solid #{borderColour}
+   color: #{penColour}
+   width: 100%
+
+table.admin td
+   text-align: left
+   border-collapse: collapse
+   border: #{borderWidth} solid #{borderColour}
+   padding-top: #{vspace}
+   padding-bottom: #{vspace}
+   padding-left:  #{hspace}
+   padding-right: #{hspace}
+
+table.admin th
+   text-align: left
+   border-collapse: collapse
+   border: #{borderWidth} solid #{borderColour}
+   padding-top:    #{vspace}
+   padding-bottom: #{vspace}
+   padding-left:  #{hspace}
+   padding-right: #{hspace}
+
+table.admin tr.header
+   background: #{panelBackground}
+   color     : #{panelColour}
+            
+table.admin tr.odd
+    background: #{zebraOddColour}
+table.admin tr.even
+    background: #{zebraEvenColour}
+            
