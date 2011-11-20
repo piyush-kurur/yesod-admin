@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE TypeSynonymInstances      #-}
 
 {-|
@@ -115,16 +116,90 @@ class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
 class YesodAuth master => HasSuperUser master where
       isSuperUser :: AuthId master -> GHandler sub master Bool
 
+
 {-|
 
-This class captures those master sites that have an admin interface to
-values of type v. The master site should support
-authentication. Therefore, YesodAdmin instance can be declared only
-for master sites with authentication. Users might have differing
-administrative rights. We capture this via the class function crudOf.
-We might need to lookup the data base for administrative permissions
-and hence the type of crudOf is a GHandler.
+This class captures the admin interface of the object @v@ on the site
+@master@. Don't be scared of the context declaration; the master site needs
+    
+    * Database access and hence YesodPersist
+
+    * Needs a super user and hence HasSuperUser
+
+The object @v@ needs an:
+    
+    * An admininstrative interfaces,
+
+    * A way of inline display with the database backend matching that of 
+      the master site and
+    
+    * A way of displaying columns of the object.
+
+The member function of this class specify the access control and
+relevant forms. Often, the default settings is all that is needed; all
+operations are allowed for super user(s) and no one else. However,
+feel free to configure the appropriate access control combinator.
 
 -}
 
-class YesodAuth master => YesodAdmin master v where
+class ( YesodPersist master
+      , HasSuperUser master
+      , Administrable v
+      , InlineDisplay (YesodPersistBackend master)
+                      (GGHandler (Admin master v) master IO)
+                      v
+      , ColumnDisplay (YesodPersistBackend master)
+                      (GGHandler (Admin master v) master IO)
+                      v
+      ) => YesodAdmin master v where
+
+      -- | This filter controls what objects are displayed to a given
+      -- user. Beware that restricting this filter is not a substitute
+      -- to proper access control. You need to also set the `canRead`
+      -- and/or `canReadColumn` appropriately. Otherwise if a user
+      -- guess the id of an object, it will be displayed. This filter
+      -- is to weed out undisplayable objects from listings.
+      listFilter :: AuthId master -> master -> [Filter v]
+      listFilter _ _ = []
+
+      -- | This controls whether a user is allowed to create a
+      -- particular object. The default setting only allows the super
+      -- user to create.
+      canCreate  :: AuthId master -- ^ The user
+                 -> v             -- ^ The object to create
+                 -> AdminHandler master v Bool
+      canCreate authId _ = isSuperUser authId
+
+      -- | Controls whether a user can replace a given object with a
+      -- new object. By default only the super user is allowed.
+      canReplace :: AuthId master -- ^ The user
+                 -> AdminKVPair master v -- ^ existing object
+                 -> v                    -- ^ the new object
+                 -> AdminHandler master v Bool
+      canReplace authId _ _ = isSuperUser authId
+
+      -- | Controls whether a particular user is allowed to delete an
+      -- object. By default only the super user is allowed.
+      canDelete  :: AuthId master
+                 -> AdminKVPair master v
+                 -> AdminHandler master v Bool
+      canDelete authId _ = isSuperUser authId
+
+      -- | Controls whether a particular user is allowed to read an
+      -- object. By default only the super user is allowed. To avoid
+      -- the unreadable objects from being listed, ensure that the
+      -- `listFilter` weeds them out.
+      canRead :: AuthId master
+              -> AdminKVPair master v
+              -> AdminHandler master v Bool
+      canRead authId _ = isSuperUser authId
+
+      -- | Controls whether a particular user is allowed to read a
+      -- particular column of the object. Notice that to read a
+      -- column, one needs the read permission any way. By default
+      -- only the super user is allowed.
+      canReadColumn  :: AuthId master
+                     -> AdminKVPair master v
+                     -> Column v     -- ^ Given column
+                     -> AdminHandler master v Bool
+      canReadColumn authId _ _ = isSuperUser authId
