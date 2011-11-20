@@ -1,6 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE TypeSynonymInstances      #-}
+
 {-|
 
 Sites with admin interfaces. 
@@ -8,6 +11,7 @@ Sites with admin interfaces.
 -}
 module Yesod.Admin.Class
        ( Administrable(..)
+       , InlineDisplay(..)
        , YesodAdmin(..)
        ) where
 
@@ -59,6 +63,40 @@ class PersistEntity v => Administrable v where
       -- is 20. 
       objectsPerPage :: v -> Int
       objectsPerPage = const 20
+
+{-|
+
+Admin sites need to show objects in inline text or in listings of
+entities in an human readable ways. This class captures objects that
+can be shown inline on admin sites. The class might look unnecessarily
+complicates; after all why not declare the member function
+`inlineDisplay` to just return a Text instead of a monadic action. The
+answer lies in the fact that for some objects like database id's, it
+makes more sense to display the inline text of the objects that the id
+points to rather than the plain id itself. This would require hitting
+the database which means it cannot be a pure Haskell function.
+
+-}
+
+class PersistBackend b m => InlineDisplay b m a where
+      inlineDisplay :: a -> b m Text
+
+instance PersistBackend b m => InlineDisplay b m Text where
+         inlineDisplay = return
+
+instance PersistBackend b m => InlineDisplay b m String where
+         inlineDisplay = return . pack
+
+instance (Show a, PersistBackend b m) => InlineDisplay b m a where
+         inlineDisplay = return . pack . show
+
+instance ( PersistEntity v
+         , PersistBackend b m
+         , InlineDisplay b m v
+         ) => InlineDisplay b m (Key b v) where
+        
+         inlineDisplay key = do maybev <- get key
+                                maybe (return "Bad Key") inlineDisplay maybev
 
 {-|
 
