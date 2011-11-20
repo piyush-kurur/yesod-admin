@@ -13,10 +13,12 @@ module Yesod.Admin.Class
        ( Administrable(..)
        , InlineDisplay(..)
        , ColumnDisplay(..)
+       , HasSuperUser (..)
        , YesodAdmin(..)
        ) where
 
 import Data.Text(Text, append, pack)
+import Yesod
 import Yesod.Auth
 import Database.Persist.Base
 import Yesod.Admin.Helpers
@@ -108,6 +110,10 @@ class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
       columnDisplay     :: Column v  -- ^ The column
                         -> v         -- ^ The value whose column is required
                         -> b m Text
+
+-- | Captures Yesod auth sites that have a super user.
+class YesodAuth master => HasSuperUser master where
+      isSuperUser :: AuthId master -> GHandler sub master Bool
 
 {-|
 
