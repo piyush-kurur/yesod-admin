@@ -11,7 +11,6 @@ module Yesod.Admin.Class
 import Yesod
 import Yesod.Auth
 
-import Yesod.Admin.Crud
 import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 
@@ -28,8 +27,4 @@ and hence the type of crudOf is a GHandler.
 -}
 
 class YesodAuth master => YesodAdmin master v where
-      crudOf  :: AuthId master -> AdminHandler master v (AdminCRUD master v)
-             -- ^ Returns the crud operations allowed for this user.
-      getCrud :: AdminHandler master v (AdminCRUD master v)
-      getCrud = do aid <- requireAuthId
-                   crudOf aid
+
