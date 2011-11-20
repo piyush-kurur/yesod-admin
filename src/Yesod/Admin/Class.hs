@@ -12,6 +12,7 @@ Sites with admin interfaces.
 module Yesod.Admin.Class
        ( Administrable(..)
        , InlineDisplay(..)
+       , ColumnDisplay(..)
        , YesodAdmin(..)
        ) where
 
@@ -97,6 +98,16 @@ instance ( PersistEntity v
         
          inlineDisplay key = do maybev <- get key
                                 maybe (return "Bad Key") inlineDisplay maybev
+
+-- | This class captures display of columns of an object. Like in the
+-- case of inline display, displaying certain columns of v require
+-- hitting the database and hence the function is not a pure haskell
+-- function.
+
+class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
+      columnDisplay     :: Column v  -- ^ The column
+                        -> v         -- ^ The value whose column is required
+                        -> b m Text
 
 {-|
 
