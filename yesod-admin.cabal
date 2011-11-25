@@ -14,10 +14,12 @@ Library
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Render
                  , Yesod.Admin.Render.Defaults
+                 , Yesod.Admin.TH
   Other-modules: Yesod.Admin.Subsite
                , Yesod.Admin.Class
                , Yesod.Admin.Types
                , Yesod.Admin.Helpers
+               , Yesod.Admin.TH.Helpers
                , Yesod.Admin.Handlers
                , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.AdminListR
@@ -30,6 +32,7 @@ Library
   Build-depends: base
                , text
                , blaze-html
+               , template-haskell
                , yesod >=0.9 && <0.10
                , yesod-auth >=0.7 && <0.8
                , shakespeare-css >=0.10 && <0.11
