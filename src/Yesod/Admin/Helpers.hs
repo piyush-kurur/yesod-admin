@@ -1,6 +1,7 @@
 module Yesod.Admin.Helpers
        ( unCamelCase
        , capitalise
+       , unCapitalise
        , camelCase
        ) where
 
@@ -13,7 +14,8 @@ unCamelCase :: String -> String
 unCamelCase = unwords . map (map toLower) . groupBy breaker
        where breaker x y = not $ isUpper y
 
-capitalise (x:xs) = toUpper x : xs
+capitalise   (x:xs) = toUpper x : xs
+unCapitalise (x:xs) = toLower x : xs
 
 camelCase :: String -> String
 camelCase str = case wds of
