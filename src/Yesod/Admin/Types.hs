@@ -9,12 +9,10 @@ module Yesod.Admin.Types
        , AdminId
        , AdminKVPair
        , AdminDB
-       , AdminCRUD
        , AdminWidget
        ) where
 
 import Yesod
-import Yesod.Admin.Crud
 import Yesod.Admin.Subsite
 
 
@@ -48,7 +46,3 @@ type AdminKVPair master v = (AdminId master v, v)
 -- | Database action of a admin site
 
 type AdminDB master v = YesodDB (Admin master v) master
-
--- | An alias for CRUD related to admin sites.
-
-type AdminCRUD master v  = CRUD (Admin master v) master v
