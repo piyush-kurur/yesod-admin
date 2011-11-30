@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell    #-}
 {-|
 
 Some helper functions that are useful for themplate Haskell code generation.
@@ -9,11 +10,16 @@ module Yesod.Admin.TH.Helpers
        , typeName
        , fieldName
        , entityColumn
+       , mkInstance
+       , persistType
+       , persistBackendP
+       , monadP
        ) where
 
 import Database.Persist
 import Database.Persist.Base
 import Yesod.Admin.Helpers
+import Language.Haskell.TH
 
 -- | Get an object associated with the given entity. The object
 -- generated is undefined but usefull for type kludges.
@@ -31,19 +37,34 @@ typeName = entityName . entityDef
 
 -- | Get the field name associated with an  EnitityField
 fieldName :: PersistEntity v
-          => EntityField v typ
+          => v
           -> String
-fieldName ef = fieldName' (undefinedObjectOf ef) ef
+          -> String
+fieldName v fname = camelCase $ unwords [ unCapitalise $ typeName v
+                                        , fname
+                                        ]
 
 entityColumn :: PersistEntity v
              => EntityField v typ
              -> String
 entityColumn = columnName . persistColumnDef 
 
-fieldName' :: PersistEntity v
-           => v
-           -> EntityField v typ
-           -> String
-fieldName' v ef = camelCase $ unwords [ unCapitalise $ typeName v
-                                      , entityColumn ef
-                                      ]
+
+-- | Create an instance declaration.
+mkInstance :: [PredQ] -> Name -> [TypeQ] -> [DecQ] -> DecQ
+mkInstance context cls args defs = instanceD (cxt context) inst defs
+     where inst = foldl appT (conT cls) args
+
+
+-- ^ Generates PersistBackend constraint.
+persistBackendP b m = classP ''PersistBackend [b,m]
+-- ^ Generate Monad constraint.
+monadP m = classP ''Monad [m]
+
+-- | The type name of a persist entity.
+persistType :: PersistEntity v
+            => v
+            -> TypeQ
+            -> TypeQ
+persistType v backend = appT (conT genericName) backend
+       where genericName = mkName (entityName (entityDef v) ++ "Generic")
