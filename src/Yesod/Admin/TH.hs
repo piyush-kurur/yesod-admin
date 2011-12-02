@@ -15,6 +15,7 @@ interfaces.
 module Yesod.Admin.TH
        ( AdminColumn
        , AdminInterface(..)
+       , deriveAdministrable
        , field
        , constructed
        , (<:>)
@@ -68,3 +69,85 @@ data AdminInterface v
                                                      -- listed and in
                                                      -- what order.
                       }
+
+getObject :: PersistEntity v
+          => AdminInterface v
+          -> v
+getObject _ = undefined
+getObjectFromCol :: PersistEntity v
+                 => AdminColumn v
+                 -> v
+getObjectFromCol _ = undefined
+
+colConstructor :: PersistEntity v
+               => AdminColumn v
+               -> String
+colConstructor c@(Field _ s) = let name = typeName $ getObjectFromCol c
+                               in capitalise $ camelCase $ unwords [ name
+                                                                   , s
+                                                                   , "Column"
+                                                                   ]
+colConstructor (Constructed _ s) = capitalise s
+
+
+colConstructors :: PersistEntity v
+                => [AdminColumn v]
+                -> [String]
+colConstructors cols = map colConstructor cols
+
+defColumn :: PersistEntity v
+          => AdminInterface v
+          -> DecQ
+defColumn ai = dataInstD (cxt []) ''Column [typ] (map mkConQ cons) []
+     where b = varT $ mkName "b"
+           cons = colConstructors $ listing ai
+           typ = persistType (getObject ai) b
+           mkConQ = flip normalC [] . mkName 
+
+
+mkListing  :: PersistEntity v
+           => AdminInterface v
+           -> DecQ
+mkListing ai = valD (varP 'listColumns) body []
+    where cons = map (conE . mkName) $ colConstructors $ listing ai
+          body = normalB $ listE cons
+singularPlural :: PersistEntity v
+               => AdminInterface v
+               -> [DecQ]
+
+singularPlural ai = defun 'objectSingular (singular ai) ++
+                       defun 'objectPlural   (plural ai)
+                     
+    where   defun _    []  = []
+            defun name str = [funD name $ [rhs str]]
+            rhs str = clause [wildP] (normalB $ litE $ stringL str) []
+
+mkColumnTitle :: PersistEntity v
+              => AdminInterface v
+              -> DecQ
+mkColumnTitle ai = mkColumnFunc ai 'columnTitle (litE . stringL . getTitle)
+    where getTitle (Field t _) = t
+          getTitle (Constructed t _) = t
+
+mkColumnFunc :: PersistEntity v
+             => AdminInterface v
+             -> Name
+             -> (AdminColumn v -> ExpQ)
+             -> DecQ
+mkColumnFunc ai name bodyfunc = funD name clauses
+       where cons    = colConstructors $ listing ai
+             bodies  = map bodyfunc $ listing ai
+             clauses = zipWith mkClause cons bodies
+             mkClause c b = clause [cP] (normalB b) []
+                      where cP = conP (mkName c) []
+
+deriveAdministrable :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
+deriveAdministrable ai = mkInstance [] ''Administrable [vtype] instBody
+      where vtype = persistType (getObject ai) $ varT $ mkName "b"
+            instBody = singularPlural ai
+                     ++ [ mkListing ai
+                        , defColumn ai
+                        , mkColumnTitle ai
+                        ]
