@@ -16,6 +16,7 @@ module Yesod.Admin.TH
        ( AdminColumn
        , AdminInterface(..)
        , deriveAdministrable
+       , deriveInlineDisplay
        , field
        , constructed
        , (<:>)
@@ -151,3 +152,22 @@ deriveAdministrable ai = mkInstance [] ''Administrable [vtype] instBody
                         , defColumn ai
                         , mkColumnTitle ai
                         ]
+
+displayRHS :: PersistEntity v
+           => v
+           -> AdminColumn v
+           -> ExpQ
+displayRHS v (Field _ name) = let fname = varE $ mkName $ fieldName v name
+                              in [| inlineDisplay . $fname |]
+displayRHS _ (Constructed _ name) = varE $ mkName name
+           
+deriveInlineDisplay :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
+deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
+                         ''InlineDisplay [b, m, persistType v b] instBody
+     where b = varT $ mkName "b"
+           m = varT $ mkName "m"
+           v = getObject ai
+           body = normalB $ displayRHS v $ inline ai
+           instBody = [valD (varP 'inlineDisplay) body []]
