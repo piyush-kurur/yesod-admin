@@ -17,6 +17,7 @@ module Yesod.Admin.TH
        , AdminInterface(..)
        , deriveAdministrable
        , deriveInlineDisplay
+       , deriveColumnDisplay
        , field
        , constructed
        , (<:>)
@@ -171,3 +172,12 @@ deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
            v = getObject ai
            body = normalB $ displayRHS v $ inline ai
            instBody = [valD (varP 'inlineDisplay) body []]
+
+mkColumnDisplay v ai =  mkColumnFunc ai 'columnDisplay $ displayRHS v
+
+deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
+                         ''ColumnDisplay [b, m, persistType v b]
+                         [ mkColumnDisplay v ai ]
+     where b = varT $ mkName "b"
+           m = varT $ mkName "m"
+           v = getObject ai
