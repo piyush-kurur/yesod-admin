@@ -58,6 +58,7 @@ data AdminRoute backend v = AdminListR          -- ^ Route to list the objects.
 instance SinglePiece (Key backend v)
          => RenderRoute (AdminRoute backend v) where
          renderRoute AdminListR       = ([],[])
+         renderRoute (AdminPageR  p)  = (["page", toSinglePiece p], [])
          renderRoute AdminCreateR     = (["create"],[])
          renderRoute (AdminReadR   k) = (["read",   toSinglePiece k],[])
          renderRoute (AdminUpdateR k) = (["update", toSinglePiece k],[])
