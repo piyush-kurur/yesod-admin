@@ -14,14 +14,14 @@ interfaces.
 
 module Yesod.Admin.TH
        ( AdminColumn
+       , field
+       , constructed
+       , (<:>)
        , AdminInterface(..)
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveColumnDisplay
        , mkAdmin
-       , field
-       , constructed
-       , (<:>)
        ) where
 
 import Data.Text (Text, pack, empty)
@@ -42,12 +42,17 @@ data  AdminColumn v = Field         String String
 -- | Create an admin column associated with an entity field. The title
 -- name will be the uncamel cased version of the column name.
 field :: PersistEntity v => String -> AdminColumn v
+field colName = Field (capitalise $ unCamelCase colName) colName
 
 -- | Creates a constructed column name which will be 
 constructed :: String -> AdminColumn v
 constructed func = Constructed (capitalise $ unCamelCase func) func
 
-field colName = Field (capitalise $ unCamelCase colName) colName
+
+-- | Set the title of the given column. Consider an admin column
+-- defined `field "name"`. The column title would then be "Name". If
+-- we want to override this to "Full Name", use the following: `"Full
+-- Name" <:> field "name".
 
 (<:>) :: String -> AdminColumn v -> AdminColumn v
 (<:>) title (Field _ cname)         = Field title cname
@@ -73,14 +78,26 @@ data AdminInterface v
                                                      -- what order.
                       }
 
+-- | The function always return the undefined object of type `v` give
+-- an admin interface for it. Often in template haskell function on
+-- needs to get things like type name or column name of the given only
+-- the admin interface for `v`. The idea is to use getObject to get
+-- the corresponding object and then use functions like entityDef
+-- etc. 
+
 getObject :: PersistEntity v
           => AdminInterface v
           -> v
 getObject _ = undefined
+
+-- | A version of getObject where only admin column is given.
+
 getObjectFromCol :: PersistEntity v
                  => AdminColumn v
                  -> v
 getObjectFromCol _ = undefined
+
+-- | The column constructor for the given admin column.
 
 colConstructor :: PersistEntity v
                => AdminColumn v
@@ -97,6 +114,8 @@ colConstructors :: PersistEntity v
                 => [AdminColumn v]
                 -> [String]
 colConstructors cols = map colConstructor cols
+
+-- | define the column data type.
 
 defColumn :: PersistEntity v
           => AdminInterface v
@@ -144,6 +163,8 @@ mkColumnFunc ai name bodyfunc = funD name clauses
              mkClause c b = clause [cP] (normalB b) []
                       where cP = conP (mkName c) []
 
+-- | Derive an instance of `Administrable` for the type `v` given the
+-- AdminInterface for `v`.
 deriveAdministrable :: PersistEntity v
                     => AdminInterface v
                     -> DecQ
@@ -162,7 +183,9 @@ displayRHS :: PersistEntity v
 displayRHS v (Field _ name) = let fname = varE $ mkName $ fieldName v name
                               in [| inlineDisplay . $fname |]
 displayRHS _ (Constructed _ name) = varE $ mkName name
-           
+
+-- | Derive an instance of `InlineDisplay` for the type `v` given the
+-- AdminInterface for `v`.
 deriveInlineDisplay :: PersistEntity v
                     => AdminInterface v
                     -> DecQ
@@ -176,6 +199,11 @@ deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
 
 mkColumnDisplay v ai =  mkColumnFunc ai 'columnDisplay $ displayRHS v
 
+-- | Derive an instance of `ColumnDisplay` for the type `v` given the
+-- AdminInterface for `v`.
+deriveColumnDisplay :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
 deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
                          ''ColumnDisplay [b, m, persistType v b]
                          [ mkColumnDisplay v ai ]
