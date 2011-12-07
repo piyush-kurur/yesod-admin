@@ -4,6 +4,8 @@
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE TypeSynonymInstances      #-}
+{-# LANGUAGE QuasiQuotes               #-}
+
 
 {-|
 
@@ -15,6 +17,7 @@ module Yesod.Admin.Class
        , InlineDisplay(..)
        , ColumnDisplay(..)
        , HasSuperUser (..)
+       , HasAdminLayout (..)
        , YesodAdmin(..)
        ) where
 
@@ -25,6 +28,9 @@ import Database.Persist.Base
 import Yesod.Admin.Helpers
 import Yesod.Admin.Subsite
 import Yesod.Admin.Types
+import Yesod.Admin.Render
+import Yesod.Admin.Render.Defaults
+import Text.Hamlet
 
 -- | This class captures objects that have an admin
 -- interfaces. Minimum complete definition includes the data type
@@ -116,7 +122,52 @@ class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
 class YesodAuth master => HasSuperUser master where
       isSuperUser :: AuthId master -> GHandler sub master Bool
 
+-- | All functions in the admin handlers generate abstract admin pages
+-- like admin listings, admin forms etc.  which needs to be rendered
+-- as HTML/CSS. This class configures how those abstract pages are
+-- rendered. The default rendering uses the combinators defined in the
+-- module "Yesod.Admin.Render.Defaults" and should work for you (you
+-- might want to change the branding though). On the other hand you
+-- can design a new admin "skin" and redefine all the members
+-- here. You can get quite a bit of configuration by just changing the
+-- styles used. To do this modify `adminStyles`.
 
+class Yesod master => HasAdminLayout master where
+
+      -- | Sets the branding of the admin site. Being a widget you can
+      -- perform arbitrary widget actions like adding styles here. However
+      -- it is better to keep it simple and delegate those to other members
+      -- (like adminStyles) of the class.
+
+      branding   :: GWidget sub master ()
+      branding   = do setTitle "Yesod Admin"
+                      addHtml [shamlet|Yesod Admin|]
+      
+      -- | Sets up the styles to use on admin pages. While you can have
+      -- arbitray widget code here, it is better to add only the style
+      -- related stuff here. This way you can change the style without
+      -- making any changes to the code what so ever.
+
+      adminStyles :: GWidget sub master ()
+      adminStyles = defaultAdminStyles
+      
+      -- | The layout of the admin site. This is where you do the
+      -- final tweaks to the widget before you send it out to the
+      -- world. The purpose of this is similar to that of
+      -- `defaultLayout` in the `Yesod` class but this is restricted
+      -- to only the admin pages of this site.
+
+      adminLayout :: GWidget sub master a  -- ^ The admin widget to render
+                  -> GHandler sub master RepHtml
+      adminLayout content = defaultAdminLayout $ do adminStyles
+                                                    [whamlet|
+                                                        <div .branding>^{branding}
+                                                        <div .content>^{content}
+                                                    |]
+
+      -- | Controls how to render an admin listing.
+      listingToContents :: Listing master -> GWidget sub master ()
+      listingToContents = defaultListing
 {-|
 
 This class captures the admin interface of the object @v@ on the site
@@ -125,6 +176,8 @@ This class captures the admin interface of the object @v@ on the site
     * Database access and hence YesodPersist
 
     * Needs a super user and hence HasSuperUser
+
+    * Needs a way to layout admin pages and hence HasAdminLayout
 
 The object @v@ needs an:
     
@@ -144,6 +197,7 @@ feel free to configure the appropriate access control combinator.
 
 class ( YesodPersist master
       , HasSuperUser master
+      , HasAdminLayout master
       , Administrable v
       , InlineDisplay (YesodPersistBackend master)
                       (GGHandler (Admin master v) master IO)
