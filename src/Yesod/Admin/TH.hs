@@ -18,6 +18,7 @@ module Yesod.Admin.TH
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveColumnDisplay
+       , mkAdmin
        , field
        , constructed
        , (<:>)
@@ -181,3 +182,16 @@ deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
      where b = varT $ mkName "b"
            m = varT $ mkName "m"
            v = getObject ai
+
+-- | Given an admin interface for a type derives all the basic
+-- instances like `InlineDisplay`, `ColumnDisplay` and `Administrable`
+-- classes. This does not derive the `YesodAdmin` instance, mostly the
+-- default methods for YesodAdmin should suffice.
+
+mkAdmin :: PersistEntity v
+        => AdminInterface v
+        -> DecsQ
+mkAdmin ai = sequence [ deriveAdministrable ai
+                      , deriveInlineDisplay ai
+                      , deriveColumnDisplay ai
+                      ]
