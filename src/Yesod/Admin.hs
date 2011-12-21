@@ -17,3 +17,4 @@ import Yesod.Admin.Class
 import Yesod.Admin.Types
 import Yesod.Admin.Render
 import Yesod.Admin.TH
+import Yesod.Admin.Dispatch
