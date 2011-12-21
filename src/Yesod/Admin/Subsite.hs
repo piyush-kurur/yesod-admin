@@ -53,7 +53,7 @@ data AdminRoute backend v = AdminListR          -- ^ Route to list the objects.
                                                 -- ^ Route to update an objects
                           | AdminDeleteR (Key backend v)
                                                 -- ^ Route to delete an object
-                          deriving Eq
+                          deriving (Eq, Show, Read)
 
 instance SinglePiece (Key backend v)
          => RenderRoute (AdminRoute backend v) where
