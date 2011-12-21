@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE TypeSynonymInstances      #-}
 {-# LANGUAGE QuasiQuotes               #-}
-
+{-# LANGUAGE OverlappingInstances      #-}
 
 {-|
 
