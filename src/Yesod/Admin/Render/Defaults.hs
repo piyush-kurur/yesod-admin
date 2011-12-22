@@ -24,7 +24,7 @@ import Yesod.Admin.Render
 
 defaultListing :: Listing master -> GWidget sub master ()
 defaultListing lst = addWidget [whamlet|
-                        <div .pagetitle>  #{listingName lst}
+                        <div .pagetitle>  #{listingSingular lst}
                         <div .listing .shadow>
                            <table .admin>
                               <tr .header>
@@ -33,11 +33,14 @@ defaultListing lst = addWidget [whamlet|
                               $forall (parity,r) <- taggedRows
                                   <tr .highlight .#{parity}>
                                       ^{r}
+                           <div .listing-footer>
+                                #{totalObjects lst} #{objects}
                      |]
       where taggedRows = zip (cycle ["odd" :: Text, "even"]) tableRows
             tableRows  = map link $ listingRows lst
             link (route, t:ts) = sequence_  (mkLink route t : map mkText ts)
-
+            objects = if totalObjects lst > 1 then listingPlural lst
+                      else listingSingular lst
 
 mkLink route t = addHamlet [hamlet| 
                 <td>

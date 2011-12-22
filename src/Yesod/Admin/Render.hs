@@ -22,8 +22,10 @@ import Yesod.Admin.Types
 -- | Admin pages show the listing of objects. This is the data type
 -- that controls it.
 
-data Listing master = Listing { listingName     :: Text 
-                                      -- ^ Name of the object listed.
+data Listing master = Listing { listingSingular     :: Text 
+                                      -- ^ Singular name
+                              , listingPlural       :: Text
+                                      -- ^ Plural name
                               , listingHeaders  :: [Text]
                                       -- ^ The headers of the listing
                               , listingRows     :: [(Route master, [Text])]

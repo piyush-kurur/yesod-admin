@@ -44,18 +44,20 @@ getAdminPageR ::  YesodAdmin master v
 getAdminPageR pg = do aid          <- requireAuthId
                       flt          <- fmap (listFilter aid) getYesod
                       objsPerPage  <- getObjectParams objectsPerPage
-                      lstName      <- getObjectParams objectPlural
+                      lstSing      <- getObjectParams objectSingular
+                      lstPlur      <- getObjectParams objectPlural
                       liftR        <- getRouteToMaster
                       cols         <- getObjectColumns
                       objCount     <- runDB $ count flt
                       rows         <- getRows aid pg objsPerPage flt listSort
                       adminLayout $ listingToContents $ 
-                            Listing { listingName  = lstName
-                                    , perPageCount = objsPerPage
-                                    , pageNumber   = pg
-                                    , totalObjects = objCount
-                                    , listingHeaders = map columnTitle cols
-                                    , listingRows    = rows
+                            Listing { listingSingular = lstSing
+                                    , listingPlural   = lstPlur
+                                    , perPageCount    = objsPerPage
+                                    , pageNumber      = pg
+                                    , totalObjects    = objCount
+                                    , listingHeaders  = map columnTitle cols
+                                    , listingRows     = rows
                                     }
 
 
