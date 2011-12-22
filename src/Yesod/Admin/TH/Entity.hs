@@ -9,14 +9,17 @@ Template haskell functions to generate admin related declarations for
 persistent entities. To be able to administer an entity you need to
 declare.
 
-  1. An `Admininstrable` instance
-  2. An `InlineDisplay`  instance
-  3. An `ColumnDisplay`  instance and finaly
-  4. A  `YesodAdmin` instance.
+     1. An 'Admininstrable' instance
+
+     2. An 'InlineDisplay' instance
+
+     3. An 'ColumnDisplay'  instance and finaly
+
+     4. A  'YesodAdmin' instance.
 
 This module proved TH code for generating all these. You need to
-define an `AdminInterface` for your type and then use the
-`mkYesodAdmin` function.
+define an 'AdminInterface' for your type and then use the
+'mkYesodAdmin' function.
 
 
 -}
@@ -55,15 +58,21 @@ data  AdminColumn v = Field         String String
 field :: PersistEntity v => String -> AdminColumn v
 field colName = Field (capitalise $ unCamelCase colName) colName
 
--- | Creates a constructed column name which will be 
-constructed :: String -> AdminColumn v
+-- | Columns of the type need not directly correspond to data base
+-- columns and can also be a constructed one. One can create a
+-- computed field as @'constructed' \"nameAndEmail\"@, provided there
+-- is a function @nameAndEmail@ which has type @'PersistBackend' b m
+-- => v -> b m 'Text'@. The title of this column would then be @\"Name
+-- and email\"@
+constructed :: String           -- ^ name of a function of type 
+                                -- @v -> b m 'Text'@.
+            -> AdminColumn v
 constructed func = Constructed (capitalise $ unCamelCase func) func
 
 
--- | Set the title of the given column. Consider an admin column
--- defined `field "name"`. The column title would then be "Name". If
--- we want to override this to "Full Name", use the following: `"Full
--- Name" <:> field "name".
+-- | Set the title of the given column. The default column title for a
+-- field defined @'field' \"name\"@ is @\"Name\"@. To use @\"Full
+-- Name\"@, use the following: @\"Full Name\" '<:>' 'field' \"name\"@.
 
 (<:>) :: String -> AdminColumn v -> AdminColumn v
 (<:>) title (Field _ cname)         = Field title cname
