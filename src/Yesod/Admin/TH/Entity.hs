@@ -31,6 +31,7 @@ module Yesod.Admin.TH.Entity
        , deriveInlineDisplay
        , deriveColumnDisplay
        , mkAdminInstances
+       , mkYesodAdmin
        ) where
 
 import Data.Text (Text, pack, empty)
@@ -221,10 +222,12 @@ deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
            m = varT $ mkName "m"
            v = getObject ai
 
--- | Given an admin interface for a type derives all the basic
--- instances like `InlineDisplay`, `ColumnDisplay` and `Administrable`
--- classes. This does not derive the `YesodAdmin` instance, mostly the
--- default methods for YesodAdmin should suffice.
+-- | This combinator derives all the basic instances like
+-- `InlineDisplay`, `ColumnDisplay` and `Administrable` classes. You
+-- need to use this function if you want to have a different access
+-- control policy than what is provieded by the default `YesodAdmin`
+-- instance. If the default instance of `YesodAdmin` suffices use the
+-- `mkYesodAdmin` combinator instead.
 
 mkAdminInstances :: PersistEntity v
                  => AdminInterface v
@@ -233,3 +236,23 @@ mkAdminInstances ai = sequence [ deriveAdministrable ai
                                , deriveInlineDisplay ai
                                , deriveColumnDisplay ai
                                ]
+
+-- | Given the name of the foundation type and admin interface for a
+-- persistent type, this function derives all the necessary class
+-- instances that are required create the admin site for this
+-- type. The `YesodAdmin` instance derived is the default one where
+-- only super user has access to the admin facility. If you want to
+-- configure the access controls explicitly then use the
+-- mkAdminInstances function instea and code up the `YesodAdmin`
+-- instance by hand.
+
+mkYesodAdmin :: PersistEntity v
+             => String            -- ^ Name of the foundation type
+             -> AdminInterface v  -- ^ The admin interface
+             -> DecsQ
+mkYesodAdmin site ai = do inst <- mkAdminInstances ai
+                          yaInst <- yadminInst
+                          return $ inst ++ [yaInst]
+  where yadminInst = mkInstance [] ''YesodAdmin [siteType, tyType] []
+        siteType   = conT $ mkName site
+        tyType     = conT $ mkName $ typeName $ getObject ai
