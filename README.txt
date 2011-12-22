@@ -9,9 +9,9 @@ http://github.com/piyush-kurur/yesod-admin
 
 Here are few things I would like of an admin site.
 
-  1. Easy and efficent creation of admin interfaces: The user should be
-     able to easily create an admin site for the objects of interes. This
-     will invariable require some template haskell.
+  1. Easy and efficient creation of admin interfaces: The user should
+     be able to easily create an admin site for the objects of
+     interest. This will invariably require some template haskell.
 
   2. Good haddock documentation: Always a work in progress
 
@@ -25,7 +25,7 @@ Here are few things I would like of an admin site.
      is an attempt at this.
 
 There are some side goals as well. Although template haskell would be
-the recomended approach, I would like to have a simplified and well
+the recommended approach, I would like to have a simplified and well
 documented base types and classes. This way it would be easy for
 developers to do nonstandard things with its type. Besides, I think
 this would force developers to think more about the types and classed
