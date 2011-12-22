@@ -30,5 +30,5 @@ getAdminListR :: ( Yesod master
                  , PersistBackend b m
                  )
                => AdminHandler master v RepHtml
-getAdminListR  = defaultLayout $ do 
-               addHamlet [hamlet|Should show the list of objects|]
+getAdminListR  = do liftR   <- getRouteToMaster
+                    redirect RedirectPermanent $ liftR $ AdminPageR 0
