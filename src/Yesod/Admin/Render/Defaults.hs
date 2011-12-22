@@ -24,7 +24,7 @@ import Yesod.Admin.Render
 
 defaultListing :: Listing master -> GWidget sub master ()
 defaultListing lst = addWidget [whamlet|
-                        <h2 .objectname> #{listingName lst}
+                        <div .pagetitle>  #{listingName lst}
                         <div .listing .shadow>
                            <table .admin>
                               <tr .header>
@@ -69,21 +69,40 @@ defaultAdminStyles = do addCassius adminStyle
                         addCassius tableStyle
                         addCassius buttonStyle
 
+-- | Colours of the main panel
 
-penColour       = "steelblue"    :: Text
+mainPanelBackground  = "black" :: Text
+mainPanelText        = "white" :: Text
+mainPanelPadding      = "1em" :: Text
+mainPanelPaddingSides = "0.25em" :: Text
 
+-- | Panel properties
+panelBackground     = "#DDDDDD" :: Text
+panelTextColour     = "black" :: Text
+
+
+-- | General  Border properties
+borderColour     = "DarkGrey" :: Text
+borderWidth      = "thin"    :: Text
+
+-- | Borders of hilighted entries
+
+highlightWidth   = "thin"   :: Text
+highlightColour  = "black"   :: Text
+ 
+
+penColour            = "black"     :: Text
+
+-- | Colour of links.
+linkColour           = "DarkCyan"  :: Text
+
+-- Colour and width of shadow objects.
 shadowColour    = "#999999" :: Text
 shadowWidth     = "10px"    :: Text
 
-borderColour    = "#AAAAAA" :: Text
-borderWidth     = "1px"     :: Text
-
-panelBackground     = "#EEEEEE" :: Text
-panelColour         = "#666666" :: Text
-
-
-zebraOddColour  = "#EEEEFF"  :: Text
-zebraEvenColour = "#FFFFF0"  :: Text
+-- | Alternating colours of a zebra table
+zebraOddColour  = "white"      :: Text
+zebraEvenColour = "#F0F0F0"  :: Text
 
 vspace          = "0.25em"   :: Text
 hspace          = "0.5em"    :: Text

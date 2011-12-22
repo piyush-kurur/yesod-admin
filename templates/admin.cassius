@@ -1,18 +1,41 @@
+.branding
+   background: #{mainPanelBackground}
+   color: #{mainPanelText}
+   font-weight: bolder
+   width: 100%
+   padding-left: #{mainPanelPadding}
+   padding-right: #{mainPanelPadding}
+   padding-top: #{mainPanelPaddingSides}
+   padding-bottom: #{mainPanelPaddingSides}
+
+div.pagetitle
+  width: 100%
+  padding-top: #{mainPanelPaddingSides}
+  padding-bottom: #{mainPanelPaddingSides}
+  color: #{panelTextColour}
+  font-weight: bolder
+
+div.listing
+  width:79%
+  
+
+:link
+   color: #{linkColour}
+   text-decoration: none
+
+:visited
+   color: #{linkColour}
+   text-decoration: underline
+
 .highlight:hover
-   box-shadow:0 0 #{shadowWidth} #{shadowColour}
+   border: #{highlightWidth} double #{highlightColour}
+
 .pushable:active
    box-shadow:inset 0 0 #{shadowWidth} #{shadowColour}
 
 .shadow
    box-shadow:0 0 #{shadowWidth} #{shadowColour}
 
-.branding
-   background: #{penColour}
-   color: #FFFFFF
-   width: 100%
-   height: 2em
-   padding-top:#1em
-   padding-bottom:#1em
    
 
 .container
