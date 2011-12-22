@@ -30,7 +30,7 @@ module Yesod.Admin.TH.Entity
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveColumnDisplay
-       , mkAdmin
+       , mkAdminInstances
        ) where
 
 import Data.Text (Text, pack, empty)
@@ -72,10 +72,10 @@ constructed func = Constructed (capitalise $ unCamelCase func) func
 -- | To define an admin site for a type one needs to define instances
 -- of `Administrable`, `InlineDisplay`, and `ColumnDisplay` besides
 -- the `YesodAdmin` instance. This module exports template haskell
--- functions like `mkAdmin` which expect an `AdminInterface` value as
--- an argument. Therefore the first step in making use of the template
--- haskell functions of this module is to define the `AdminInterface`
--- for the appropriate type.
+-- functions like `mkYesodAdmin` which expect an `AdminInterface`
+-- value as an argument. Therefore the first step in making use of the
+-- template haskell functions of this module is to define the
+-- `AdminInterface` for the appropriate type.
 
 data AdminInterface v
      = AdminInterface { singular :: String           -- ^ The singular name
@@ -226,10 +226,10 @@ deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
 -- classes. This does not derive the `YesodAdmin` instance, mostly the
 -- default methods for YesodAdmin should suffice.
 
-mkAdmin :: PersistEntity v
-        => AdminInterface v
-        -> DecsQ
-mkAdmin ai = sequence [ deriveAdministrable ai
-                      , deriveInlineDisplay ai
-                      , deriveColumnDisplay ai
-                      ]
+mkAdminInstances :: PersistEntity v
+                 => AdminInterface v
+                 -> DecsQ
+mkAdminInstances ai = sequence [ deriveAdministrable ai
+                               , deriveInlineDisplay ai
+                               , deriveColumnDisplay ai
+                               ]
