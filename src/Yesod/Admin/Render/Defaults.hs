@@ -82,7 +82,7 @@ panelBackground     = "#EEEEEE" :: Text
 panelColour         = "#666666" :: Text
 
 
-zebraOddColour  = "#E0E0FF"  :: Text
+zebraOddColour  = "#EEEEFF"  :: Text
 zebraEvenColour = "#FFFFF0"  :: Text
 
 vspace          = "0.25em"   :: Text
