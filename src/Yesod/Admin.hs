@@ -1,6 +1,7 @@
 {-|
 
-The yesod admin module.
+This is the main module that one needs for building admin sites for
+database objects. 
 
 -}
 

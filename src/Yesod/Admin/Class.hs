@@ -9,7 +9,34 @@
 
 {-|
 
-Sites with admin interfaces. 
+This module collects various type classes associated with admin
+subsites. Normally you need not bother too much about this module; you
+would be using this via the template haskell code available inside the
+module "Yesod.Admin.TH". However, in case you are a developer or want
+to do something non-standard, this is the module to refer to.
+
+The admin interfaces of an object is controlled by four classes defined here.
+
+* The class 'Administrable'. This class is used to define things like
+  name of the object the columns in listings of the object etc.
+
+* The class 'InlineDisplay'. This class controls how a particular
+  object is showed in inline text.
+
+* The class 'ColumnDisplay'. This class controls what is shown in the
+  listing of a particular object.
+
+* The class 'YesodAdmin'. This class defines access control and forms
+  for the object.
+
+Master sites need to be instances of 'YesodAuth' and also need to
+specify who the super users of the site are. This is done via the
+class HasSuperUser
+
+The last class that is defined here is the 'HasAdminLayout'. This can
+be used to control the rendering of the admin site. If you want to
+change the appearence of the site, change the branding this is what
+you configure.
 
 -}
 module Yesod.Admin.Class
@@ -32,15 +59,24 @@ import Yesod.Admin.Render
 import Yesod.Admin.Render.Defaults
 import Text.Hamlet
 
--- | This class captures objects that have an admin
--- interfaces. Minimum complete definition includes the data type
--- @'Column' v@ and the function 'columnTitle'.
+{-| 
+
+    This class captures objects that have an admin interface.  The key
+member is the associated type @'Column'@. A column in the listing of
+an object can either be a database column of an object or might be a
+constructed entity. Each column in the listing has a title. The member
+function @'columnTitle'@ maps a column of a data type @`v`@ (of type
+@'Column' v@) to its title. Minimum complete definition of this class
+requires defining the associated type @'Column' v@ and the function
+@'columnTitle'@.
+
+-}
 
 class PersistEntity v => Administrable v where
 
       -- | The name of the object. Used in various places for example
       -- in titles of admin pages. The default values is the entity
-      -- of the given persistent type.
+      -- name of the given persistent type.
       objectSingular :: v -> Text
       objectSingular = pack . unCamelCase . entityName . entityDef
 
@@ -51,7 +87,7 @@ class PersistEntity v => Administrable v where
 
       -- | Abstract columns of the type. These columns can appear in
       -- listings and access control.  Besides the usual database
-      -- columns they may capture other constructed columns.
+      -- columns, they can be constructed ones as well.
       data Column v     :: *
 
       -- | The title of the given column.
@@ -79,12 +115,13 @@ class PersistEntity v => Administrable v where
 Admin sites need to show objects in inline text or in listings of
 entities in an human readable ways. This class captures objects that
 can be shown inline on admin sites. The class might look unnecessarily
-complicates; after all why not declare the member function
-`inlineDisplay` to just return a Text instead of a monadic action. The
-answer lies in the fact that for some objects like database id's, it
-makes more sense to display the inline text of the objects that the id
-points to rather than the plain id itself. This would require hitting
-the database which means it cannot be a pure Haskell function.
+complicated; after all why not declare the member function
+@'inlineDisplay'@ to just return a @'Text'@ instead of a monadic
+action. The answer lies in the fact that for some objects like
+database id's, it makes more sense to display the inline text of the
+objects that the id points to rather than the plain id itself. This
+would require hitting the database which means it cannot be a pure
+Haskell function.
 
 -}
 

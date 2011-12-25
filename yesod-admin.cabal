@@ -1,6 +1,13 @@
 Name: yesod-admin
 Version: 0.1
 Synopsis: An admin interface for persistent data
+
+Description: This library provides combinators to build admin sites
+  for Yesod applications. Recall that the standard way to provide
+  database agnostic persistent storage for Yesod applications is via
+  persistent package. Using this library, one can provide sites for
+  common CRUD operations on these storage elements.
+	     
 Homepage: http://github.com/piyush-kurur/yesod-admin
 License: BSD3
 License-file: LICENSE
@@ -12,13 +19,13 @@ Cabal-version: >=1.2
 Library
   Hs-source-dirs: src
   Exposed-modules: Yesod.Admin
+                 , Yesod.Admin.Class
                  , Yesod.Admin.Render
                  , Yesod.Admin.Render.Defaults
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
                  , Yesod.Admin.Routes
   Other-modules: Yesod.Admin.Subsite
-               , Yesod.Admin.Class
                , Yesod.Admin.Types
                , Yesod.Admin.Helpers
                , Yesod.Admin.TH.Helpers
