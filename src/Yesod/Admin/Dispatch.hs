@@ -22,13 +22,7 @@ import Yesod.Admin.Handlers
 import Yesod.Admin.Class
 import Yesod.Admin.Types
 
-instance ( Yesod master
-         , YesodAdmin master v
-         , YesodPersist master
-         , b ~ YesodPersistBackend master
-         , m ~ GGHandler (Admin master v) master IO
-         , PersistEntity v
-         , PersistBackend b m
+instance ( YesodAdmin master v
          , SinglePiece (AdminId master v)
          ) => YesodDispatch (Admin master v) master where
 
