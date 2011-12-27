@@ -47,8 +47,8 @@ module Yesod.Admin.TH.Entity
        
        AdminInterface(..)
        , simpleAdmin
-{-
        , deriveAdministrable
+{-
        , deriveInlineDisplay
        , deriveColumnDisplay
        , mkAdminInstances
@@ -151,3 +151,192 @@ simpleAdmin col = AdminInterface { singular = ""
                                  , listing  = []
                                  , columnTitleOverride = []
                                  }
+                     
+-- | Derive an instance of `Administrable` for the type `v` given the
+-- AdminInterface for `v`.
+deriveAdministrable :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
+deriveAdministrable ai = mkInstance [] ''Administrable [vtype] instBody
+      where vtype   = persistType v $ varT $ mkName "b"
+            v       = getObject ai
+            dbCols  = map columnName . entityColumns $ entityDef v
+            cols    = nub (listing ai ++ dbCols)
+            instBody = singularPlural ai
+                     ++ [ defListColumns v $ listing ai
+                        , defColumn v cols
+                        , defColumnTitle v cols $ columnTitleOverride ai
+                        ]
+
+-- | TH function to generate the definition of members
+-- 'objectSingular' and 'objectPlural'.
+singularPlural :: PersistEntity v
+               => AdminInterface v
+               -> [DecQ]
+singularPlural ai = defun 'objectSingular (singular ai) ++
+                       defun 'objectPlural   (plural ai)
+    where   defun _    []  = []
+            defun name str = [funD name $ [rhs str]]
+            rhs str = clause [wildP] (normalB $ litE $ stringL str) []
+
+-- | Define the 'listColumn' member.
+defListColumns  :: PersistEntity v
+                => v
+                -> [String]
+                -> DecQ
+defListColumns v cols = valD (varP 'listColumns) body []
+    where cons = map (conE . mkName) $ map (constructor v) cols
+          body = normalB $ listE cons
+
+
+-- | Define the column data type.
+defColumn :: PersistEntity v
+          => v
+          -> [String]
+          -> DecQ
+defColumn v cols = dataInstD (cxt []) ''Column [typ] (map mkConQ cons) []
+     where b    = varT $ mkName "b"
+           cons = map (constructor v) cols
+           typ  = persistType v b
+           mkConQ = flip normalC [] . mkName 
+
+
+defColumnFunc :: Name              -- ^ The name of the function
+             -> [(String, ExpQ)]  -- ^ The constructors
+             -> DecQ
+defColumnFunc name consExp = funD name clauses
+       where clauses = [ mkClause c e | (c,e) <- consExp ]
+             mkClause c e = clause [cP] (normalB e) []
+                      where cP = conP (mkName c) []
+
+defColumnTitle :: PersistEntity v
+              => v
+              -> [ String ]
+              -> [(String,String)]
+              -> DecQ
+defColumnTitle v cols override = defColumnFunc 'columnTitle $ map titleExp cols
+    where titleExp col = (constructor v col, litE . stringL $ getTitle col)
+          getTitle col = fromMaybe (unCamelCase col) $ lookup col override
+
+
+getObject :: PersistEntity v
+          => AdminInterface v
+          -> v
+getObject _ = undefined
+
+isDBColumn :: String -> Bool
+isDBColumn = isUpper . head
+
+constructor :: PersistEntity v => v -> String -> String
+constructor v col | isDBColumn col = capitalise $ camelCase
+                                                $ unwords [ typeName v
+                                                          , col
+                                                          , "Column"
+                                                          ]
+                  | otherwise      = capitalise col
+
+
+{-
+-- | A version of getObject where only admin column is given.
+
+getObjectFromCol :: PersistEntity v
+                 => AdminColumn v
+                 -> v
+getObjectFromCol _ = undefined
+
+-- | The column constructor for the given admin column.
+
+colConstructor :: PersistEntity v
+               => AdminColumn v
+               -> String
+colConstructor c@(Field _ s) = let name = typeName $ getObjectFromCol c
+                               in capitalise $ camelCase $ unwords [ name
+                                                                   , s
+                                                                   , "Column"
+                                                                   ]
+colConstructor (Constructed _ s) = capitalise s
+
+
+colConstructors :: PersistEntity v
+                => [AdminColumn v]
+                -> [String]
+colConstructors cols = map colConstructor cols
+
+-- | define the column data type.
+
+
+
+
+
+
+displayRHS :: PersistEntity v
+           => v
+           -> AdminColumn v
+           -> ExpQ
+displayRHS v (Field _ name) = let fname = varE $ mkName $ fieldName v name
+                              in [| inlineDisplay . $fname |]
+displayRHS _ (Constructed _ name) = varE $ mkName name
+
+-- | Derive an instance of `InlineDisplay` for the type `v` given the
+-- AdminInterface for `v`.
+deriveInlineDisplay :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
+deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
+                         ''InlineDisplay [b, m, persistType v b] instBody
+     where b = varT $ mkName "b"
+           m = varT $ mkName "m"
+           v = getObject ai
+           body = normalB $ displayRHS v $ inline ai
+           instBody = [valD (varP 'inlineDisplay) body []]
+
+mkColumnDisplay v ai =  mkColumnFunc ai 'columnDisplay $ displayRHS v
+
+-- | Derive an instance of `ColumnDisplay` for the type `v` given the
+-- AdminInterface for `v`.
+deriveColumnDisplay :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
+deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
+                         ''ColumnDisplay [b, m, persistType v b]
+                         [ mkColumnDisplay v ai ]
+     where b = varT $ mkName "b"
+           m = varT $ mkName "m"
+           v = getObject ai
+
+-- | This combinator derives all the basic instances like
+-- `InlineDisplay`, `ColumnDisplay` and `Administrable` classes. You
+-- need to use this function if you want to have a different access
+-- control policy than what is provieded by the default `YesodAdmin`
+-- instance. If the default instance of `YesodAdmin` suffices use the
+-- `mkYesodAdmin` combinator instead.
+
+mkAdminInstances :: PersistEntity v
+                 => AdminInterface v
+                 -> DecsQ
+mkAdminInstances ai = sequence [ deriveAdministrable ai
+                               , deriveInlineDisplay ai
+                               , deriveColumnDisplay ai
+                               ]
+
+-- | Given the name of the foundation type and admin interface for a
+-- persistent type, this function derives all the necessary class
+-- instances that are required create the admin site for this
+-- type. The `YesodAdmin` instance derived is the default one where
+-- only super user has access to the admin facility. If you want to
+-- configure the access controls explicitly then use the
+-- mkAdminInstances function instea and code up the `YesodAdmin`
+-- instance by hand.
+
+mkYesodAdmin :: PersistEntity v
+             => String            -- ^ Name of the foundation type
+             -> AdminInterface v  -- ^ The admin interface
+             -> DecsQ
+mkYesodAdmin site ai = do inst <- mkAdminInstances ai
+                          yaInst <- yadminInst
+                          return $ inst ++ [yaInst]
+  where yadminInst = mkInstance [] ''YesodAdmin [siteType, tyType] []
+        siteType   = conT $ mkName site
+        tyType     = conT $ mkName $ typeName $ getObject ai
+
+-}
