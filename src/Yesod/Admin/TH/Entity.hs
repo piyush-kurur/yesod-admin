@@ -49,8 +49,8 @@ module Yesod.Admin.TH.Entity
        , simpleAdmin
        , deriveAdministrable
        , deriveInlineDisplay
-{-
        , deriveColumnDisplay
+{-
        , mkAdminInstances
        , mkYesodAdmin
 -}
@@ -160,8 +160,7 @@ deriveAdministrable :: PersistEntity v
 deriveAdministrable ai = mkInstance [] ''Administrable [vtype] instBody
       where vtype   = persistType v $ varT $ mkName "b"
             v       = getObject ai
-            dbCols  = map columnName . entityColumns $ entityDef v
-            cols    = nub (listing ai ++ dbCols)
+            cols    = columns ai
             instBody = singularPlural ai
                      ++ [ defListColumns v $ listing ai
                         , defColumn v cols
@@ -180,6 +179,18 @@ deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
            v = getObject ai
            body = normalB $ displayRHS v $ inline ai
            instBody = [valD (varP 'inlineDisplay) body []]
+
+-- | Derive an instance of `ColumnDisplay` for the type `v` given the
+-- AdminInterface for `v`.
+deriveColumnDisplay :: PersistEntity v
+                    => AdminInterface v
+                    -> DecQ
+deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
+                         ''ColumnDisplay [b, m, persistType v b]
+                         [ defColumnDisplay v $ columns ai]
+     where b = varT $ mkName "b"
+           m = varT $ mkName "m"
+           v = getObject ai
 
 
 -- | TH function to generate the definition of members
@@ -232,11 +243,21 @@ defColumnTitle v cols override = defColumnFunc 'columnTitle $ map titleExp cols
     where titleExp col = (constructor v col, litE . stringL $ getTitle col)
           getTitle col = fromMaybe (unCamelCase col) $ lookup col override
 
+defColumnDisplay v =  defColumnFunc 'columnDisplay . map colDisplay 
+    where colDisplay col = (constructor v col, displayRHS v col)
+
 
 getObject :: PersistEntity v
           => AdminInterface v
           -> v
 getObject _ = undefined
+
+columns :: PersistEntity v
+        => AdminInterface v
+        -> [String]
+columns ai = nub (listing ai ++ dbCols)
+   where v       = getObject ai
+         dbCols  = map columnName $ entityColumns $ entityDef v
 
 isDBColumn :: String -> Bool
 isDBColumn = isUpper . head
