@@ -163,9 +163,9 @@ simpleAdmin col = AdminInterface { singular = ""
 mkAdminInstances :: PersistEntity v
                  => AdminInterface v
                  -> DecsQ
-mkAdminInstances ai = sequence [ deriveAdministrable ai
-                               , deriveInlineDisplay ai
-                               , deriveColumnDisplay ai
+mkAdminInstances ai = sequence [ deriveAdministrable' ai
+                               , deriveInlineDisplay' ai
+                               , deriveColumnDisplay' ai
                                ]
 
 -- | Given the name of the foundation type and admin interface for a
@@ -197,10 +197,14 @@ mkYesodAdmin site ai = do inst <- mkAdminInstances ai
                      
 -- | Derive an instance of `Administrable` for the type `v` given the
 -- AdminInterface for `v`.
-deriveAdministrable :: PersistEntity v
-                    => AdminInterface v
-                    -> DecQ
-deriveAdministrable ai = mkInstance [] ''Administrable [vtype] instBody
+deriveAdministrable  :: PersistEntity v
+                     => AdminInterface v
+                     -> DecsQ
+deriveAdministrable' :: PersistEntity v
+                     => AdminInterface v
+                     -> DecQ
+deriveAdministrable  = fmap (:[]) . deriveAdministrable'
+deriveAdministrable' ai = mkInstance [] ''Administrable [vtype] instBody
       where vtype   = persistType v $ varT $ mkName "b"
             v       = getObject ai
             cols    = columns ai
@@ -212,11 +216,15 @@ deriveAdministrable ai = mkInstance [] ''Administrable [vtype] instBody
 
 -- | Derive an instance of `InlineDisplay` for the type `v` given the
 -- AdminInterface for `v`.
-deriveInlineDisplay :: PersistEntity v
-                    => AdminInterface v
-                    -> DecQ
-deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
-                         ''InlineDisplay [b, m, persistType v b] instBody
+deriveInlineDisplay  :: PersistEntity v
+                     => AdminInterface v
+                     -> DecsQ
+deriveInlineDisplay' :: PersistEntity v
+                     => AdminInterface v
+                     -> DecQ
+deriveInlineDisplay = fmap (:[]) . deriveInlineDisplay'
+deriveInlineDisplay' ai = mkInstance [monadP m, persistBackendP b m]
+                          ''InlineDisplay [b, m, persistType v b] instBody
      where b = varT $ mkName "b"
            m = varT $ mkName "m"
            v = getObject ai
@@ -227,10 +235,16 @@ deriveInlineDisplay ai = mkInstance [monadP m, persistBackendP b m]
 -- AdminInterface for `v`.
 deriveColumnDisplay :: PersistEntity v
                     => AdminInterface v
-                    -> DecQ
-deriveColumnDisplay ai = mkInstance [monadP m, persistBackendP b m]
-                         ''ColumnDisplay [b, m, persistType v b]
-                         [ defColumnDisplay v $ columns ai]
+                    -> DecsQ
+
+deriveColumnDisplay' :: PersistEntity v
+                     => AdminInterface v
+                     -> DecQ
+deriveColumnDisplay = fmap (:[]) . deriveColumnDisplay'
+
+deriveColumnDisplay' ai = mkInstance [monadP m, persistBackendP b m]
+                          ''ColumnDisplay [b, m, persistType v b]
+                          [ defColumnDisplay v $ columns ai]
      where b = varT $ mkName "b"
            m = varT $ mkName "m"
            v = getObject ai
