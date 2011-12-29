@@ -18,7 +18,7 @@ import Data.Text(Text)
 
 import Yesod
 import Yesod.Admin.Subsite
-import Yesod.Admin.Handlers
+import Yesod.Admin.Handlers.Internal
 import Yesod.Admin.Class
 import Yesod.Admin.Types
 

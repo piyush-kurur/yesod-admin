@@ -6,7 +6,7 @@
 {-|
 
 -}
-module Yesod.Admin.Handlers.AdminUpdateR
+module Yesod.Admin.Handlers.Internal.AdminUpdateR
        ( getAdminUpdateR
        ) where
 

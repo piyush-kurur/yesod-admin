@@ -8,7 +8,7 @@
 This module defines the handler for the /page/ route.
 
 -}
-module Yesod.Admin.Handlers.AdminPageR
+module Yesod.Admin.Handlers.Internal.AdminPageR
        ( getAdminPageR
        ) where
 

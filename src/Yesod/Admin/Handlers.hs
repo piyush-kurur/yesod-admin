@@ -1,15 +1,19 @@
+{-|
+
+This module exports some helper handlers.
+
+-}
+
 module Yesod.Admin.Handlers
-       ( module Yesod.Admin.Handlers.AdminListR
-       , module Yesod.Admin.Handlers.AdminPageR
-       , module Yesod.Admin.Handlers.AdminCreateR
-       , module Yesod.Admin.Handlers.AdminReadR
-       , module Yesod.Admin.Handlers.AdminUpdateR
-       , module Yesod.Admin.Handlers.AdminDeleteR
+       ( toMasterRoute
        ) where
 
-import Yesod.Admin.Handlers.AdminListR
-import Yesod.Admin.Handlers.AdminPageR
-import Yesod.Admin.Handlers.AdminCreateR
-import Yesod.Admin.Handlers.AdminReadR
-import Yesod.Admin.Handlers.AdminUpdateR
-import Yesod.Admin.Handlers.AdminDeleteR
+import Yesod
+import Yesod.Admin.Types
+import Yesod.Admin.Subsite
+
+-- | Lifts an admin route to the master route.
+
+toMasterRoute :: Route (Admin master v) -> AdminHandler master v (Route master)
+toMasterRoute r = do lft <- getRouteToMaster
+                     return $ lft r

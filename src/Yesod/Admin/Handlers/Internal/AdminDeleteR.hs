@@ -6,7 +6,7 @@
 {-|
 
 -}
-module Yesod.Admin.Handlers.AdminDeleteR
+module Yesod.Admin.Handlers.Internal.AdminDeleteR
        ( getAdminDeleteR
        ) where
 import Yesod

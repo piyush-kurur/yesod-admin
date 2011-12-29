@@ -4,7 +4,7 @@
 {-|
 
 -}
-module Yesod.Admin.Handlers.AdminCreateR
+module Yesod.Admin.Handlers.Internal.AdminCreateR
        ( getAdminCreateR
        ) where
 

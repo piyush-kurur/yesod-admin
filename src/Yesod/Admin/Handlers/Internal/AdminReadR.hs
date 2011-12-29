@@ -6,7 +6,7 @@
 {-|
 
 -}
-module Yesod.Admin.Handlers.AdminReadR
+module Yesod.Admin.Handlers.Internal.AdminReadR
        ( getAdminReadR
        ) where
 

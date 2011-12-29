@@ -7,7 +7,7 @@
 {-|
 
 -}
-module Yesod.Admin.Handlers.AdminListR
+module Yesod.Admin.Handlers.Internal.AdminListR
        ( getAdminListR
        ) where
 
