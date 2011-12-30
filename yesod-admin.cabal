@@ -25,7 +25,6 @@ Library
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
                  , Yesod.Admin.TH.Site
-                 , Yesod.Admin.Routes
   Other-modules: Yesod.Admin.Subsite
                , Yesod.Admin.Types
                , Yesod.Admin.Helpers
