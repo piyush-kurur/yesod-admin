@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell    #-}
+
 {-| 
 
 This module sets up the admin sites for all administrable objects of
@@ -10,7 +11,7 @@ into the url of the main site. By using the TH code @'mkSiteAdmin'
 \"Foundation\" [\"Foo\", \"Bar\", \"Biz\"]@, you can create subsite
 @FoundationAdmin@ creates the subsite with the following routes
 
-
+> /            FoundationAdminR GET
 > /foo         FooAdminR FooAdmin getFooAdmin
 > /bar         BarAdminR BarAdmin getBarAdmin
 > /biz         BizAdminR BarAdmin getBarAdmin
@@ -20,11 +21,11 @@ place in your main sites route.
 
 -}
 
-module Yesod.Admin.TH.Site
-       (
-       ) where
+module Yesod.Admin.TH.Site where
 
 import Language.Haskell.TH
+import Language.Haskell.TH.Quote
+import Yesod
 import Yesod.Admin.Helpers
 import Yesod.Admin.Subsite
 
@@ -87,14 +88,35 @@ siteAdminR :: String  -- ^ the site admin route
 siteAdminR site = site ++ "AdminR"
 
 
+-- | This is where the action happens
+mkSiteAdminPrim :: String       -- ^ the sites foundation type
+                -> [String]     -- ^ the entities for which admin is sought
+                -> DecsQ
+mkSiteAdminPrim site = fmap concat . sequence . map (defAdmin site) 
 
-{-
--- | This TH function makes all but the main admin page handler.
+{- FIXME
 
-mkSiteAdmin :: String   -- ^ the site's foundation type
-            -> [String] -- ^ the entities for which admin is sought
-            -> DecsQ
+   {-
 
-mkSiteAdmin = 
+    I would like to do more things here like define the mkYesodSub
+    instance for site admin but TH stage restriction is biting me. Ideally
+    I would like something like this. Moving it to a different module also
+    does not help as site and entities are arguments for mkSiteAdminPrim.
+   
+   -}
+
+
+mkSiteAdminPrim :: String   -- ^ the site's foundation type
+                -> [String] -- ^ the entities for which admin is sought
+                -> DecsQ
+
+mkSiteAdminPrim site entities = let
+               pr = quoteExp parseRoutes
+               resExp = pr $ routes site entities
+               in do admins <- fmap concat . sequence 
+                               $ map (defAdmin site) entities
+                     subsite <-  mkYesodSub site [] 
+                             $(quoteExp parseRoutes $ routes site entities)
+                     return (admins ++ subsite)
 
 -}
