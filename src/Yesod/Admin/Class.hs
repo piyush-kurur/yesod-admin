@@ -30,8 +30,8 @@ The admin interfaces of an object is controlled by four classes defined here.
   for the object.
 
 Master sites need to be instances of 'YesodAuth' and also need to
-specify who the super users of the site are. This is done via the
-class HasSuperUser
+specify who have administrative previledges to the site. This is done
+via the class 'HasAdminUser'
 
 The last class that is defined here is the 'HasAdminLayout'. This can
 be used to control the rendering of the admin site. If you want to
@@ -43,7 +43,7 @@ module Yesod.Admin.Class
        ( Administrable(..)
        , InlineDisplay(..)
        , ColumnDisplay(..)
-       , HasSuperUser (..)
+       , HasAdminUser (..)
        , HasAdminLayout (..)
        , YesodAdmin(..)
        ) where
@@ -155,9 +155,30 @@ class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
                         -> v         -- ^ The value whose column is required
                         -> b m Text
 
--- | Captures Yesod auth sites that have a super user.
-class YesodAuth master => HasSuperUser master where
+-- | Captures Yesod auth sites that admins. An admin is a user who has
+-- some of the administartive previledges. A super user is an admin
+-- user with all the administrative previledge. The default
+-- definitions are the following:
+--
+--    * There are no super users.
+--
+--    * The only admin users are the super users
+--
+-- Therefore the default definitions *will not* enable the admin
+-- interfaces at all. If you define 'isSuperUser' but not
+-- 'isAdminUser' then only the superusers have access to the admin
+-- site. 
+
+class YesodAuth master => HasAdminUser master where
       isSuperUser :: AuthId master -> GHandler sub master Bool
+                  -- ^ Check whether the user is a superuser
+      isAdminUser :: AuthId master -> GHandler sub master Bool
+                  -- ^ Check whether the user is an admin. An
+                  -- admin is a user who has access to some of
+                  -- the admin facilities. All superusers are by
+                  -- default admin users.
+      isAdminUser   = isSuperUser
+      isSuperUser _ = return False
 
 -- | All functions in the admin handlers generate abstract admin pages
 -- like admin listings, admin forms etc.  which needs to be rendered
@@ -212,7 +233,8 @@ This class captures the admin interface of the object @v@ on the site
     
     * Database access and hence YesodPersist
 
-    * Needs a super user and hence HasSuperUser
+    * Needs a way to check for users with administrative permissions
+      and hence HasAdminUser
 
     * Needs a way to layout admin pages and hence HasAdminLayout
 
@@ -233,7 +255,7 @@ feel free to configure the appropriate access control combinator.
 -}
 
 class ( YesodPersist master
-      , HasSuperUser master
+      , HasAdminUser master
       , HasAdminLayout master
       , Administrable v
       , InlineDisplay (YesodPersistBackend master)
