@@ -19,6 +19,7 @@ import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 import Yesod.Admin.Class
 import Yesod.Admin.Render
+import Yesod.Admin.Handlers.Helpers
 
 
 {-
@@ -41,24 +42,30 @@ there is nothing great that is happening here.
 getAdminPageR ::  YesodAdmin master v
               => Int   -- ^ The page to view
               -> AdminHandler master v RepHtml
-getAdminPageR pg = do aid          <- requireAuthId
-                      flt          <- fmap (listFilter aid) getYesod
-                      objsPerPage  <- getObjectParams objectsPerPage
-                      lstSing      <- getObjectParams objectSingular
-                      lstPlur      <- getObjectParams objectPlural
-                      liftR        <- getRouteToMaster
-                      cols         <- getObjectColumns
-                      objCount     <- runDB $ count flt
-                      rows         <- getRows aid pg objsPerPage flt listSort
-                      adminLayout $ listingToContents $ 
-                            Listing { listingSingular = lstSing
-                                    , listingPlural   = lstPlur
-                                    , perPageCount    = objsPerPage
-                                    , pageNumber      = pg
-                                    , totalObjects    = objCount
-                                    , listingHeaders  = map columnTitle cols
-                                    , listingRows     = rows
-                                    }
+
+getAdminPageR pg = withAdminUser $ getAdminPageR' pg
+getAdminPageR' ::  YesodAdmin master v
+               => Int   -- ^ The page to view
+               -> AuthId master
+               -> AdminHandler master v RepHtml
+
+getAdminPageR' pg aid = do flt          <- fmap (listFilter aid) getYesod
+                           objsPerPage  <- getObjectParams objectsPerPage
+                           lstSing      <- getObjectParams objectSingular
+                           lstPlur      <- getObjectParams objectPlural
+                           liftR        <- getRouteToMaster
+                           cols         <- getObjectColumns
+                           objCount     <- runDB $ count flt
+                           rows         <- getRows aid pg objsPerPage flt listSort
+                           adminLayout $ listingToContents $ 
+                               Listing { listingSingular = lstSing
+                                       , listingPlural   = lstPlur
+                                       , perPageCount    = objsPerPage
+                                       , pageNumber      = pg
+                                       , totalObjects    = objCount
+                                       , listingHeaders  = map columnTitle cols
+                                       , listingRows     = rows
+                                       }
 
 
 getRows :: YesodAdmin master v
