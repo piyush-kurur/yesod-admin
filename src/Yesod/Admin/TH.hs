@@ -10,3 +10,4 @@ module Yesod.Admin.TH
        ) where
 
 import Yesod.Admin.TH.Entity
+import Yesod.Admin.TH.Site

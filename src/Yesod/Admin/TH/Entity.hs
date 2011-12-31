@@ -48,7 +48,7 @@ module Yesod.Admin.TH.Entity
        AdminInterface(..)
        , simpleAdmin
        , mkYesodAdmin
-       , mkAdminInstances
+       , mkEntityAdmin
        -- * Low level Template haskell functions. 
        -- $lowlevel
        
@@ -118,7 +118,7 @@ import Yesod.Admin.Subsite
 
 -- | This datatype controls the admin site generate via the template
 -- haskell functions of this module. Having defined this type you can
--- use either either `mkYesodAdmin` or `mkAdminInstances` (if you want
+-- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want
 -- to tweak the access controls).
 
 data AdminInterface v
@@ -153,41 +153,51 @@ simpleAdmin col = AdminInterface { singular = ""
                                  , columnTitleOverride = []
                                  }
 
--- | This combinator derives all the basic instances like
--- `InlineDisplay`, `ColumnDisplay` and `Administrable` classes. You
--- need to use this function if you want to have a different access
--- control policy than what is provided by the default `YesodAdmin`
--- instance. If the default instance of `YesodAdmin` suffices use the
--- `mkYesodAdmin` combinator instead.
+-- | The TH code @mkEntityAdmin "Site" ai@ derives all the basic
+-- instances like `InlineDisplay`, `ColumnDisplay` and `Administrable`
+-- classes for the entity corresponding to admin instance ai. If the
+-- entity has type name @Foo@ then it also splices the declarations:
+--
+-- > type FooAdmin = Admin Site Foo
+-- > getFooAdmin :: Site -> FooAdmin
+-- > getFooAdmin _ = `getAdmin`
+--
+-- The above declaration is to facilitate hooking of the admin site of
+-- Foo to the main site. You need to use this function if you want to
+-- have a different access control policy than what is provided by the
+-- default `YesodAdmin` instance. If the default instance of
+-- `YesodAdmin` suffices use the `mkYesodAdmin` combinator instead.
 
-mkAdminInstances :: PersistEntity v
-                 => AdminInterface v
-                 -> DecsQ
-mkAdminInstances ai = sequence [ deriveAdministrable' ai
-                               , deriveInlineDisplay' ai
-                               , deriveColumnDisplay' ai
-                               ]
+mkEntityAdmin :: PersistEntity v
+              => String        -- ^ Name of the foundation type
+              -> AdminInterface v
+              -> DecsQ
+mkEntityAdmin site ai = do insts <- sequence [ deriveAdministrable' ai
+                                             , deriveInlineDisplay' ai
+                                             , deriveColumnDisplay' ai
+                                             ]
+                           aliases <- defEntityAliases site entity
+                           return (insts ++ aliases)
+       where entity = typeName $ getObject ai
 
 -- | Given the name of the foundation type and admin interface for a
 -- persistent type, this function derives all the necessary class
 -- instances that are required create the admin site for this
 -- type. The `YesodAdmin` instance derived is the default one where
 -- only super user has access to the admin facility. If you want to
--- configure the access controls explicitly then use the
--- mkAdminInstances function instead and code up the `YesodAdmin`
--- instance by hand.
+-- configure the access controls explicitly then use the mkEntityAdmin
+-- function instead and code up the `YesodAdmin` instance by hand.
 
 mkYesodAdmin :: PersistEntity v
              => String            -- ^ Name of the foundation type
              -> AdminInterface v  -- ^ The admin interface
              -> DecsQ
-mkYesodAdmin site ai = do inst <- mkAdminInstances ai
+mkYesodAdmin site ai = do inst <- mkEntityAdmin site ai
                           yaInst <- yadminInst
                           return $ inst ++ [yaInst]
   where yadminInst = mkInstance [] ''YesodAdmin [siteType, tyType] []
         siteType   = conT $ mkName site
         tyType     = conT $ mkName $ typeName $ getObject ai
-
 
 -- $lowlevel
 -- You will most likely not need these functions but in case
@@ -249,6 +259,31 @@ deriveColumnDisplay' ai = mkInstance [monadP m, persistBackendP b m]
            m = varT $ mkName "m"
            v = getObject ai
 
+
+-- | The TH code @defAdmin Site Foo@ generates the following
+-- declarations
+-- 
+-- > type FooAdmin = Admin Site Foo
+-- > getFooAdmin :: Site -> FooAdmin
+-- > getFooAdmin _ = getAdmin
+--
+
+defEntityAliases :: String -- ^ the site's foundation type
+                 -> String -- ^ the persistent entity
+                 -> DecsQ
+defEntityAliases site entity = sequence [ tySynD alias [] admin
+                                        , sigD funcName funcType
+                                        , funD funcName [body]
+                                        ]
+     where admin       = conT ''Admin `appT` siteTy
+                                      `appT` entityTy
+           alias       = mkName $ entityAdmin entity
+           funcType    = arrowT `appT` siteTy
+                                 `appT` conT alias
+           funcName    = mkName $ getEntityAdmin entity
+           body        = clause [wildP] (normalB  $ varE 'getAdmin) []
+           siteTy    = conT $ mkName site   -- the TH type of site
+           entityTy  = conT $ mkName entity -- the TH type of the entity
 
 -- | TH function to generate the definition of members
 -- 'objectSingular' and 'objectPlural'.

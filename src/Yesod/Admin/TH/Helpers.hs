@@ -14,6 +14,8 @@ module Yesod.Admin.TH.Helpers
        , persistType
        , persistBackendP
        , monadP
+       , entityAdmin
+       , getEntityAdmin
        ) where
 
 import Database.Persist
@@ -68,3 +70,13 @@ persistType :: PersistEntity v
             -> TypeQ
 persistType v backend = appT (conT genericName) backend
        where genericName = mkName (entityName (entityDef v) ++ "Generic")
+
+
+-- | Generates the entities type alias name
+entityAdmin :: String -- ^ the persistent entity
+            -> String
+entityAdmin entity = entity ++ "Admin"
+
+getEntityAdmin :: String  -- ^ the persistent entity
+               -> String
+getEntityAdmin entity = "get" ++ entity ++ "Admin"
