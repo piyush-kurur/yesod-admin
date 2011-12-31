@@ -153,20 +153,10 @@ simpleAdmin col = AdminInterface { singular = ""
                                  , columnTitleOverride = []
                                  }
 
--- | The TH code @mkEntityAdmin "Site" ai@ derives all the basic
--- instances like `InlineDisplay`, `ColumnDisplay` and `Administrable`
--- classes for the entity corresponding to admin instance ai. If the
--- entity has type name @Foo@ then it also splices the declarations:
---
--- > type FooAdmin = Admin Site Foo
--- > getFooAdmin :: Site -> FooAdmin
--- > getFooAdmin _ = `getAdmin`
---
--- The above declaration is to facilitate hooking of the admin site of
--- Foo to the main site. You need to use this function if you want to
--- have a different access control policy than what is provided by the
--- default `YesodAdmin` instance. If the default instance of
--- `YesodAdmin` suffices use the `mkYesodAdmin` combinator instead.
+-- | This function is similar to the 'mkYesodAdmin' function but does
+-- not derive a 'YesodAdmin' instance for the given entity. Use this
+-- function if you want to have a different access control policy than
+-- what is provided by the default 'YesodAdmin' instance.
 
 mkEntityAdmin :: PersistEntity v
               => String        -- ^ Name of the foundation type
@@ -182,11 +172,20 @@ mkEntityAdmin site ai = do insts <- sequence [ deriveAdministrable' ai
 
 -- | Given the name of the foundation type and admin interface for a
 -- persistent type, this function derives all the necessary class
--- instances that are required create the admin site for this
--- type. The `YesodAdmin` instance derived is the default one where
--- only super user has access to the admin facility. If you want to
--- configure the access controls explicitly then use the mkEntityAdmin
--- function instead and code up the `YesodAdmin` instance by hand.
+-- instances that are required create the admin site for this type. It
+-- also defines the following aliases. If the entity has name @Foo@
+-- then it also splices the declarations:
+--
+-- > type FooAdmin = Admin Site Foo
+-- > getFooAdmin :: Site -> FooAdmin
+-- > getFooAdmin _ = getAdmin
+--
+-- The above declaration is to facilitate hooking the admin site of
+-- Foo to the main site. Further it also derives the default
+-- 'YesodAdmin' instance where only super user has access to the admin
+-- facilities. If you want to configure the access controls explicitly
+-- then use the 'mkEntityAdmin' function instead and code up the
+-- 'YesodAdmin' instance by hand.
 
 mkYesodAdmin :: PersistEntity v
              => String            -- ^ Name of the foundation type
@@ -205,8 +204,8 @@ mkYesodAdmin site ai = do inst <- mkEntityAdmin site ai
 -- use these.
 
                      
--- | Derive an instance of `Administrable` for the type `v` given the
--- AdminInterface for `v`.
+-- | Derive an instance of @`Administrable`@ for the type @v@ given
+-- the AdminInterface for @v@.
 deriveAdministrable  :: PersistEntity v
                      => AdminInterface v
                      -> DecsQ
