@@ -21,13 +21,13 @@ Library
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Class
                  , Yesod.Admin.Render
+                 , Yesod.Admin.Subsite
+                 , Yesod.Admin.Types
                  , Yesod.Admin.Render.Defaults
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
---                 , Yesod.Admin.TH.Site
-  Other-modules: Yesod.Admin.Subsite
-               , Yesod.Admin.Types
-               , Yesod.Admin.Helpers
+        --       , Yesod.Admin.TH.Site
+  Other-modules: Yesod.Admin.Helpers
                , Yesod.Admin.TH.Helpers
                , Yesod.Admin.Handlers
                , Yesod.Admin.Handlers.Helpers
