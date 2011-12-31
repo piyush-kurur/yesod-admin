@@ -44,6 +44,9 @@ module Yesod.Admin.TH.Entity
 
        -- * Column constructors.
        -- $columnconstructors
+
+       -- * Helper functions.
+       -- $helpers
        
        AdminInterface(..)
        , simpleAdmin
@@ -114,6 +117,22 @@ import Yesod.Admin.Subsite
 --  will be the function name with the first letter capitalised. For example
 --  if the function name is @nameAndEmail@, the constructor will be
 --  @NameAndEmail@
+
+
+{- $helpers
+
+Besides declaring all the necessary admininstrative instances,
+@`mkYesodAdmin`@ applied to the admin interfaces of entity Foo also
+declares the following:
+
+  1. The type alias @FooAdmin@ for the time @Admin Site Foo@
+  
+  2. The function @getFooAdmin@
+
+This is to facilitate hooking of the admin subsite to the main
+subsite.
+
+-}
 
 
 -- | This datatype controls the admin site generate via the template
@@ -332,7 +351,7 @@ defColumnTitle :: PersistEntity v
               -> DecQ
 defColumnTitle v cols override = defColumnFunc 'columnTitle $ map titleExp cols
     where titleExp col = (constructor v col, litE . stringL $ getTitle col)
-          getTitle col = fromMaybe (unCamelCase col) $ lookup col override
+          getTitle col = fromMaybe (capitalise $ unCamelCase col) $ lookup col override
 
 defColumnDisplay v =  defColumnFunc 'columnDisplay . map colDisplay 
     where colDisplay col = (constructor v col, displayRHS v col)
@@ -348,7 +367,7 @@ columns :: PersistEntity v
         -> [String]
 columns ai = nub (listing ai ++ dbCols)
    where v       = getObject ai
-         dbCols  = map columnName $ entityColumns $ entityDef v
+         dbCols  = map (capitalise . columnName) $ entityColumns $ entityDef v
 
 isDBColumn :: String -> Bool
 isDBColumn = isUpper . head
