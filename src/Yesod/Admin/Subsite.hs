@@ -9,8 +9,10 @@ This defines the admin subsite data type.
 -}
 module Yesod.Admin.Subsite
        ( Admin
-       , getAdmin
+       -- * Routes
+       -- $routes
        , AdminRoute(..)
+       , getAdmin
        ) where
 
 import Yesod
@@ -41,7 +43,16 @@ these generic routes hence we have to code these by hand.
 
 -}
 
--- ^ The data type that captures the admin related routes of an
+{- $routes
+
+In case you want to link to various admin pages you will need to use
+the constructors of this type. Make sure to lift the routes to roots
+of the master site. See the function
+'Yesod.Admin.Handlers.toMasterRoute'
+
+-}
+
+-- | The data type that captures the admin related routes of an
 -- object.
 
 data AdminRoute backend v = AdminListR          -- ^ Route to list the objects.
