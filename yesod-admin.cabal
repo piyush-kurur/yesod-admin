@@ -7,7 +7,7 @@ Description: This library provides combinators to build admin sites
   database agnostic persistent storage for Yesod applications is via
   persistent package. Using this library, one can provide sites for
   common CRUD operations on these storage elements.
-	     
+             
 Homepage: http://github.com/piyush-kurur/yesod-admin
 License: BSD3
 License-file: LICENSE
@@ -23,13 +23,13 @@ Library
                  , Yesod.Admin.Render
                  , Yesod.Admin.Subsite
                  , Yesod.Admin.Types
+                 , Yesod.Admin.Handlers
                  , Yesod.Admin.Render.Defaults
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
         --       , Yesod.Admin.TH.Site
   Other-modules: Yesod.Admin.Helpers
                , Yesod.Admin.TH.Helpers
-               , Yesod.Admin.Handlers
                , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.Internal
                , Yesod.Admin.Handlers.Internal.AdminListR
