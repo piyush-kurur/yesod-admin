@@ -40,7 +40,10 @@ Library
                , Yesod.Admin.Handlers.Internal.AdminDeleteR
                , Yesod.Admin.Dispatch
   Build-depends: base
+               , time
+               , old-locale
                , text
+               , bytestring
                , blaze-html
                , template-haskell
                , yesod >=0.9 && <0.10

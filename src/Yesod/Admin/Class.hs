@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE TypeSynonymInstances      #-}
 {-# LANGUAGE QuasiQuotes               #-}
-{-# LANGUAGE OverlappingInstances      #-}
+
 
 {-|
 
@@ -48,7 +48,11 @@ module Yesod.Admin.Class
        , YesodAdmin(..)
        ) where
 
+import Data.Int
+import Data.ByteString (ByteString)
 import Data.Text(Text, append, pack)
+import System.Locale
+import Data.Time
 import Yesod
 import Yesod.Auth
 import Database.Persist.Base
@@ -128,14 +132,34 @@ Haskell function.
 class PersistBackend b m => InlineDisplay b m a where
       inlineDisplay :: a -> b m Text
 
+-- We now declare InlineDisplay instance for all the standard persist
+-- values.
+
 instance PersistBackend b m => InlineDisplay b m Text where
          inlineDisplay = return
 
 instance PersistBackend b m => InlineDisplay b m String where
          inlineDisplay = return . pack
 
-instance (Show a, PersistBackend b m) => InlineDisplay b m a where
+instance PersistBackend b m => InlineDisplay b m ByteString where
          inlineDisplay = return . pack . show
+
+instance PersistBackend b m => InlineDisplay b m Double where
+         inlineDisplay = return . pack . show
+
+instance (Integral i, Show i, PersistBackend b m) 
+                   => InlineDisplay b m i where
+         inlineDisplay = return . pack . show
+
+instance PersistBackend b m => InlineDisplay b m Bool where
+         inlineDisplay = return . pack . show
+
+instance PersistBackend b m => InlineDisplay b m Day where
+         inlineDisplay = return . pack . formatTime defaultTimeLocale "%d %b, %Y" 
+
+instance PersistBackend b m => InlineDisplay b m UTCTime where
+         inlineDisplay = return . pack . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
+
 
 instance ( PersistEntity v
          , PersistBackend b m
