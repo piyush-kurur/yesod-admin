@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE TypeSynonymInstances      #-}
 {-# LANGUAGE QuasiQuotes               #-}
+{-# LANGUAGE OverlappingInstances      #-}
 
 
 {-|
@@ -15,16 +16,17 @@ would be using this via the template haskell code available inside the
 module "Yesod.Admin.TH". However, in case you are a developer or want
 to do something non-standard, this is the module to refer to.
 
-The admin interfaces of an object is controlled by four classes defined here.
+The admin interfaces of an object is controlled by four classes
+defined here.
 
 * The class 'Administrable'. This class is used to define things like
-  name of the object the columns in listings of the object etc.
+  name of the object the attributes in listings of the object etc.
 
 * The class 'InlineDisplay'. This class controls how a particular
   object is showed in inline text.
 
-* The class 'ColumnDisplay'. This class controls what is shown in the
-  listing of a particular object.
+* The class 'AttributeDisplay'. This class controls what is shown in
+  the listing of a particular object.
 
 * The class 'YesodAdmin'. This class defines access control and forms
   for the object.
@@ -42,7 +44,7 @@ you configure.
 module Yesod.Admin.Class
        ( Administrable(..)
        , InlineDisplay(..)
-       , ColumnDisplay(..)
+       , AttributeDisplay(..)
        , HasAdminUser (..)
        , HasAdminLayout (..)
        , YesodAdmin(..)
@@ -66,13 +68,13 @@ import Text.Hamlet
 {-| 
 
     This class captures objects that have an admin interface.  The key
-member is the associated type @'Column'@. A column in the listing of
-an object can either be a database column of an object or might be a
-constructed entity. Each column in the listing has a title. The member
-function @'columnTitle'@ maps a column of a data type @`v`@ (of type
-@'Column' v@) to its title. Minimum complete definition of this class
-requires defining the associated type @'Column' v@ and the function
-@'columnTitle'@.
+member is the associated type @'Attribute'@. An attribute in the
+listing of an object can either be a database column of an object or
+might be a constructed entity. Each attribute in the listing has a
+title. The member function @'attributeTitle'@ maps an attribute of a
+data type @`v`@ (of type @'Attribute' v@) to its title. Minimum
+complete definition of this class requires defining the associated
+type @'Attribute' v@ and the function @'AttributeTitle'@.
 
 -}
 
@@ -89,19 +91,19 @@ class PersistEntity v => Administrable v where
       objectPlural  :: v -> Text
       objectPlural  v = objectSingular v `append` "s"
 
-      -- | Abstract columns of the type. These columns can appear in
-      -- listings and access control.  Besides the usual database
-      -- columns, they can be constructed ones as well.
-      data Column v     :: *
+      -- | Abstract attributes of the type. These attributes can
+      -- appear in listings and access control.  Besides the usual
+      -- database columns, they can be constructed ones as well.
+      data Attribute v     :: *
 
-      -- | The title of the given column.
-      columnTitle :: Column v -> Text
+      -- | The title of the given attribute.
+      attributeTitle :: Attribute v -> Text
       
-      -- | In listing of the object what all columns should be listed.
-      -- This can be empty in which case the inline display of the
-      -- object is used.
-      listColumns :: [Column v]
-      listColumns = []
+      -- | In listing of the object what all attributes should be
+      -- listed.  This can be empty in which case the inline display
+      -- of the object is used.
+      listAttributes :: [Attribute v]
+      listAttributes = []
       
       -- | Controls in which order the objects are listed. By default
       -- no sorting is done, i.e. it is governed by the database
@@ -110,7 +112,7 @@ class PersistEntity v => Administrable v where
       listSort = []
 
       -- | How many elements to be shown on a page. The default value
-      -- is 20. 
+      -- is 20.
       objectsPerPage :: v -> Int
       objectsPerPage = const 20
 
@@ -129,7 +131,16 @@ Haskell function.
 
 -}
 
-class PersistBackend b m => InlineDisplay b m a where
+instance (PersistEntity v, InlineDisplay b m v)
+         => InlineDisplay b m (Key b v) where
+        
+         inlineDisplay key = do maybev <- get key
+                                maybe (return "Bad Key") inlineDisplay maybev
+
+instance InlineDisplay b m v => InlineDisplay b m (Maybe v) where
+         inlineDisplay mv = do maybe (return "") inlineDisplay mv
+
+class (Monad m, PersistBackend b m) => InlineDisplay b m a where
       inlineDisplay :: a -> b m Text
 
 -- We now declare InlineDisplay instance for all the standard persist
@@ -147,8 +158,7 @@ instance PersistBackend b m => InlineDisplay b m ByteString where
 instance PersistBackend b m => InlineDisplay b m Double where
          inlineDisplay = return . pack . show
 
-instance (Integral i, Show i, PersistBackend b m) 
-                   => InlineDisplay b m i where
+instance PersistBackend b m => InlineDisplay b m Int where
          inlineDisplay = return . pack . show
 
 instance PersistBackend b m => InlineDisplay b m Bool where
@@ -161,22 +171,17 @@ instance PersistBackend b m => InlineDisplay b m UTCTime where
          inlineDisplay = return . pack . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
 
 
-instance ( PersistEntity v
-         , PersistBackend b m
-         , InlineDisplay b m v
-         ) => InlineDisplay b m (Key b v) where
-        
-         inlineDisplay key = do maybev <- get key
-                                maybe (return "Bad Key") inlineDisplay maybev
 
--- | This class captures display of columns of an object. Like in the
--- case of inline display, displaying certain columns of v require
--- hitting the database and hence the function is not a pure haskell
--- function.
+-- | This class captures display of attributes of an object. Like in
+-- the case of inline display, displaying certain attributes of v
+-- require hitting the database and hence the function is not a pure
+-- haskell function.
 
-class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
-      columnDisplay     :: Column v  -- ^ The column
-                        -> v         -- ^ The value whose column is required
+class (PersistBackend b m, Administrable v)
+      => AttributeDisplay b m v where
+      attributeDisplay  :: Attribute v  -- ^ The attribute
+                        -> v            -- ^ The value whose attribute
+                                        -- is required
                         -> b m Text
 
 -- | Captures Yesod auth sites that admins. An admin is a user who has
@@ -191,7 +196,7 @@ class (PersistBackend b m, Administrable v) => ColumnDisplay b m v where
 -- Therefore the default definitions *will not* enable the admin
 -- interfaces at all. If you define 'isSuperUser' but not
 -- 'isAdminUser' then only the superusers have access to the admin
--- site. 
+-- site.
 
 class YesodAuth master => HasAdminUser master where
       isSuperUser :: AuthId master -> GHandler sub master Bool
@@ -217,18 +222,18 @@ class YesodAuth master => HasAdminUser master where
 class Yesod master => HasAdminLayout master where
 
       -- | Sets the branding of the admin site. Being a widget you can
-      -- perform arbitrary widget actions like adding styles here. However
-      -- it is better to keep it simple and delegate those to other members
-      -- (like adminStyles) of the class.
+      -- perform arbitrary widget actions like adding styles
+      -- here. However it is better to keep it simple and delegate
+      -- those to other members (like adminStyles) of the class.
 
       branding   :: GWidget sub master ()
       branding   = do setTitle "Yesod Admin"
                       addHtml [shamlet|Yesod Admin|]
       
-      -- | Sets up the styles to use on admin pages. While you can have
-      -- arbitray widget code here, it is better to add only the style
-      -- related stuff here. This way you can change the style without
-      -- making any changes to the code what so ever.
+      -- | Sets up the styles to use on admin pages. While you can
+      -- have arbitray widget code here, it is better to add only the
+      -- style related stuff here. This way you can change the style
+      -- without making any changes to the code what so ever.
 
       adminStyles :: GWidget sub master ()
       adminStyles = defaultAdminStyles
@@ -253,7 +258,8 @@ class Yesod master => HasAdminLayout master where
 {-|
 
 This class captures the admin interface of the object @v@ on the site
-@master@. Don't be scared of the context declaration; the master site needs
+@master@. Don't be scared of the context declaration; the master site
+needs
     
     * Database access and hence YesodPersist
 
@@ -269,7 +275,7 @@ The object @v@ needs an:
     * A way of inline display with the database backend matching that of 
       the master site and
     
-    * A way of displaying columns of the object.
+    * A way of displaying attributes of the object.
 
 The member function of this class specify the access control and
 relevant forms. Often, the default settings is all that is needed; all
@@ -285,7 +291,7 @@ class ( YesodPersist master
       , InlineDisplay (YesodPersistBackend master)
                       (GGHandler (Admin master v) master IO)
                       v
-      , ColumnDisplay (YesodPersistBackend master)
+      , AttributeDisplay (YesodPersistBackend master)
                       (GGHandler (Admin master v) master IO)
                       v
       ) => YesodAdmin master v where
@@ -293,7 +299,7 @@ class ( YesodPersist master
       -- | This filter controls what objects are displayed to a given
       -- user. Beware that restricting this filter is not a substitute
       -- to proper access control. You need to also set the `canRead`
-      -- and/or `canReadColumn` appropriately. Otherwise if a user
+      -- and/or `canReadAttribute` appropriately. Otherwise if a user
       -- guess the id of an object, it will be displayed. This filter
       -- is to weed out undisplayable objects from listings.
       listFilter :: AuthId master -> master -> [Filter v]
@@ -332,11 +338,11 @@ class ( YesodPersist master
       canRead authId _ = isSuperUser authId
 
       -- | Controls whether a particular user is allowed to read a
-      -- particular column of the object. Notice that to read a
-      -- column, one needs the read permission any way. By default
+      -- particular attribute of the object. Notice that to read a
+      -- attribute, one needs the read permission any way. By default
       -- only the super user is allowed.
-      canReadColumn  :: AuthId master
-                     -> AdminKVPair master v
-                     -> Column v     -- ^ Given column
-                     -> AdminHandler master v Bool
-      canReadColumn authId _ _ = isSuperUser authId
+      canReadAttribute  :: AuthId master
+                        -> AdminKVPair master v
+                        -> Attribute v     -- ^ Given attribute
+                        -> AdminHandler master v Bool
+      canReadAttribute authId _ _ = isSuperUser authId

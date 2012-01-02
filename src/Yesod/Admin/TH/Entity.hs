@@ -39,16 +39,16 @@ module Yesod.Admin.TH.Entity
        -- * Displaying objects.
        -- $display
 
-       -- * Column titles.
-       -- $columntitle
+       -- * Attribute titles.
+       -- $attributetitle
 
-       -- * Column constructors.
-       -- $columnconstructors
+       -- * Attribute constructors.
+       -- $attributeconstructors
 
        -- * Helper functions.
        -- $helpers
        
-       AdminInterface(..)
+         AdminInterface(..)
        , simpleAdmin
        , mkYesodAdmin
        , mkEntityAdmin
@@ -57,7 +57,7 @@ module Yesod.Admin.TH.Entity
        
        , deriveAdministrable
        , deriveInlineDisplay
-       , deriveColumnDisplay
+       , deriveAttributeDisplay
        ) where
 
 import Data.Text (Text, pack, empty)
@@ -78,7 +78,7 @@ import Yesod.Admin.Subsite
 -- In an admin site the object is either displayed in inline text or
 -- in listings. The field 'inline' of the 'AdminInterface' datatype
 -- controls the inline display of the objects where as 'listing'
--- controls what columns are shown and in which order.  Both 'inline'
+-- controls what attributes are shown and in which order.  Both 'inline'
 -- or an element of 'listing' can be either:
 --
 --   1. A string that starts with an upper case letter e.g. @\"Name\"@
@@ -94,29 +94,30 @@ import Yesod.Admin.Subsite
 --
 
 
--- $columntitle
+-- $attributetitle
 --
--- The default column title for a column fooBarBiz is @\"Foo bar
--- biz\"@. I.e it is the uncamelcased version of the column name.  You
--- can override the title by changing the 'columnTitleOverride' field
--- of the 'AdminInterface'.
+-- The default attribute title for a attribute fooBarBiz is @\"Foo bar
+-- biz\"@. I.e it is the uncamelcased version of the attribute name.
+-- You can override the title by changing the 'attributeTitleOverride'
+-- field of the 'AdminInterface'.
 --
 
 
--- $columnconstructors
--- The TH code generates on constructor for each database entry plus what
--- ever constructed columns are used in listings. The constructors are the
--- following. 
+-- $attributeconstructors
 --
---  1. For a database column it is represented by camel cased concatenation
---  of the entity name, the column name and the string Column. For example
---  the database column @name@ of entity Person will give a constructor
---  @PersonNameColumn@
+-- The TH code generates on constructor for each database entry plus
+-- what ever constructed attributes are used in listings. The
+-- constructors are the following.
 --
---  2. For a constructed column corresponding to a function, the constructor
---  will be the function name with the first letter capitalised. For example
---  if the function name is @nameAndEmail@, the constructor will be
---  @NameAndEmail@
+--  1. For a database attribute it is represented by camel cased
+--     concatenation of the entity name, the attribute name and the
+--     string Attribute. For example the database column @name@ of
+--     entity Person will give a constructor @PersonNameAttribute@
+--
+--  2. For a constructed attribute corresponding to a function, the
+--     constructor will be the function name with the first letter
+--     capitalised. For example if the function name is
+--     @nameAndEmail@, the constructor will be @NameAndEmail@
 
 
 {- $helpers
@@ -137,39 +138,40 @@ subsite.
 
 -- | This datatype controls the admin site generate via the template
 -- haskell functions of this module. Having defined this type you can
--- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want
--- to tweak the access controls).
+-- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want to
+-- tweak the access controls).
 
 data AdminInterface v
      = AdminInterface { singular :: String  -- ^ The singular name
                       , plural   :: String  -- ^ The plural form
-                      , columnTitleOverride :: [(String, String)]
+                      , attributeTitleOverride :: [(String, String)]
                              -- ^ List of tuples (c,t) where c is a
-                             -- column and t is its title. You need to
-                             -- specify only those columns whose
+                             -- attribute and t is its title. You need
+                             -- to specify only those attributes whose
                              -- default title you are not happy with
                       , inline   :: String
                              -- ^ How to display the inline display of
                              -- the object. It could either be a
                              -- database column (a capitalised name)
-                             -- or a constructed one (a name that
-                             -- starts with lower case).
+                             -- or a constructed (a name that starts
+                             -- with lower case).
                       , listing  :: [ String ]
-                             -- ^ Ordered list of the columns in the
+                             -- ^ Ordered list of attributes in the
                              -- listing of the object.
                       }
 
 -- | Generate a simple admin interface. The argument follows the same
--- convention as that of an administrative column. It can either be
+-- convention as that of an administrative attribute. It can either be
 -- the name of a function that returns the inline representation or
--- can be one of fields, with the first character in upper case.
+-- can be one of the database column, in which case the first
+-- character in upper case.
 simpleAdmin :: String          -- ^ How to display inline
             -> AdminInterface v
 simpleAdmin col = AdminInterface { singular = ""
                                  , plural   = ""
                                  , inline   = col
                                  , listing  = []
-                                 , columnTitleOverride = []
+                                 , attributeTitleOverride = []
                                  }
 
 -- | This function is similar to the 'mkYesodAdmin' function but does
@@ -183,7 +185,7 @@ mkEntityAdmin :: PersistEntity v
               -> DecsQ
 mkEntityAdmin site ai = do insts <- sequence [ deriveAdministrable' ai
                                              , deriveInlineDisplay' ai
-                                             , deriveColumnDisplay' ai
+                                             , deriveAttributeDisplay' ai
                                              ]
                            aliases <- defEntityAliases site entity
                            return (insts ++ aliases)
@@ -218,9 +220,10 @@ mkYesodAdmin site ai = do inst <- mkEntityAdmin site ai
         tyType     = conT $ mkName $ typeName $ getObject ai
 
 -- $lowlevel
--- You will most likely not need these functions but in case
--- you want to have more control on the generated haskell code you can
--- use these.
+--
+-- You will most likely not need these functions but in case you want
+-- to have more control on the generated haskell code you can use
+-- these.
 
                      
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
@@ -235,11 +238,11 @@ deriveAdministrable  = fmap (:[]) . deriveAdministrable'
 deriveAdministrable' ai = mkInstance [] ''Administrable [vtype] instBody
       where vtype   = persistType v $ varT $ mkName "b"
             v       = getObject ai
-            cols    = columns ai
+            cols    = attributes ai
             instBody = singularPlural ai
-                     ++ [ defListColumns v $ listing ai
-                        , defColumn v cols
-                        , defColumnTitle v cols $ columnTitleOverride ai
+                     ++ [ defListAttributes v $ listing ai
+                        , defAttribute v cols
+                        , defAttributeTitle v cols $ attributeTitleOverride ai
                         ]
 
 -- | Derive an instance of `InlineDisplay` for the type `v` given the
@@ -259,20 +262,21 @@ deriveInlineDisplay' ai = mkInstance [monadP m, persistBackendP b m]
            body = normalB $ displayRHS v $ inline ai
            instBody = [valD (varP 'inlineDisplay) body []]
 
--- | Derive an instance of `ColumnDisplay` for the type `v` given the
--- AdminInterface for `v`.
-deriveColumnDisplay :: PersistEntity v
+-- | Derive an instance of `AttributeDisplay` for the type `v` given
+-- the AdminInterface for `v`.
+deriveAttributeDisplay :: PersistEntity v
                     => AdminInterface v
                     -> DecsQ
 
-deriveColumnDisplay' :: PersistEntity v
+deriveAttributeDisplay' :: PersistEntity v
                      => AdminInterface v
                      -> DecQ
-deriveColumnDisplay = fmap (:[]) . deriveColumnDisplay'
+deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
 
-deriveColumnDisplay' ai = mkInstance [monadP m, persistBackendP b m]
-                          ''ColumnDisplay [b, m, persistType v b]
-                          [ defColumnDisplay v $ columns ai]
+deriveAttributeDisplay' ai
+            = mkInstance [monadP m, persistBackendP b m]
+                    ''AttributeDisplay [b, m, persistType v b]
+                     [ defAttributeDisplay v $ attributes ai]
      where b = varT $ mkName "b"
            m = varT $ mkName "m"
            v = getObject ai
@@ -314,46 +318,46 @@ singularPlural ai = defun 'objectSingular (singular ai) ++
             defun name str = [funD name $ [rhs str]]
             rhs str = clause [wildP] (normalB $ litE $ stringL str) []
 
--- | Define the 'listColumn' member.
-defListColumns  :: PersistEntity v
+-- | Define the 'listAttribute' member.
+defListAttributes  :: PersistEntity v
                 => v
                 -> [String]
                 -> DecQ
-defListColumns v cols = valD (varP 'listColumns) body []
+defListAttributes v cols = valD (varP 'listAttributes) body []
     where cons = map (conE . mkName) $ map (constructor v) cols
           body = normalB $ listE cons
 
 
--- | Define the column data type.
-defColumn :: PersistEntity v
+-- | Define the attribute data type.
+defAttribute :: PersistEntity v
           => v
           -> [String]
           -> DecQ
-defColumn v cols = dataInstD (cxt []) ''Column [typ] (map mkConQ cons) []
+defAttribute v cols = dataInstD (cxt []) ''Attribute [typ] (map mkConQ cons) []
      where b    = varT $ mkName "b"
            cons = map (constructor v) cols
            typ  = persistType v b
            mkConQ = flip normalC [] . mkName 
 
 
-defColumnFunc :: Name              -- ^ The name of the function
+defAttributeFunc :: Name              -- ^ The name of the function
              -> [(String, ExpQ)]  -- ^ The constructors
              -> DecQ
-defColumnFunc name consExp = funD name clauses
+defAttributeFunc name consExp = funD name clauses
        where clauses = [ mkClause c e | (c,e) <- consExp ]
              mkClause c e = clause [cP] (normalB e) []
                       where cP = conP (mkName c) []
 
-defColumnTitle :: PersistEntity v
+defAttributeTitle :: PersistEntity v
               => v
               -> [ String ]
               -> [(String,String)]
               -> DecQ
-defColumnTitle v cols override = defColumnFunc 'columnTitle $ map titleExp cols
+defAttributeTitle v cols override = defAttributeFunc 'attributeTitle $ map titleExp cols
     where titleExp col = (constructor v col, litE . stringL $ getTitle col)
           getTitle col = fromMaybe (capitalise $ unCamelCase col) $ lookup col override
 
-defColumnDisplay v =  defColumnFunc 'columnDisplay . map colDisplay 
+defAttributeDisplay v =  defAttributeFunc 'attributeDisplay . map colDisplay 
     where colDisplay col = (constructor v col, displayRHS v col)
 
 
@@ -362,21 +366,21 @@ getObject :: PersistEntity v
           -> v
 getObject _ = undefined
 
-columns :: PersistEntity v
+attributes :: PersistEntity v
         => AdminInterface v
         -> [String]
-columns ai = nub (listing ai ++ dbCols)
+attributes ai = nub (listing ai ++ dbCols)
    where v       = getObject ai
          dbCols  = map (capitalise . columnName) $ entityColumns $ entityDef v
 
-isDBColumn :: String -> Bool
-isDBColumn = isUpper . head
+isDBAttribute :: String -> Bool
+isDBAttribute = isUpper . head
 
 constructor :: PersistEntity v => v -> String -> String
-constructor v col | isDBColumn col = capitalise $ camelCase
+constructor v col | isDBAttribute col = capitalise $ camelCase
                                                 $ unwords [ typeName v
                                                           , col
-                                                          , "Column"
+                                                          , "Attribute"
                                                           ]
                   | otherwise      = capitalise col
 
@@ -384,6 +388,7 @@ displayRHS :: PersistEntity v
            => v
            -> String
            -> ExpQ
-displayRHS v col | isDBColumn col = let fname = varE $ mkName $ fieldName v col
-                                        in [| inlineDisplay . $fname |]
-                 | otherwise      = varE $ mkName col
+displayRHS v col | isDBAttribute col
+                                 = let fname = varE $ mkName $ fieldName v col
+                                       in [| inlineDisplay . $fname |]
+                 | otherwise     = varE $ mkName col

@@ -30,7 +30,7 @@ Developers notes
 The code for this handler is likely to be the most complicated as its
 output depend on a lot of parameters. As more features are added the
 mess is only goint to increase. It makes sense to fanatically refactor
-the code here. 
+the code here.
 
 Most of it is straight forward modulo the fact that some combinatorts
 need explicit types to fix type ambiguities. There are lots of tedious
@@ -54,7 +54,7 @@ getAdminPageR' pg aid = do flt          <- fmap (listFilter aid) getYesod
                            lstSing      <- getObjectParams objectSingular
                            lstPlur      <- getObjectParams objectPlural
                            liftR        <- getRouteToMaster
-                           cols         <- getObjectColumns
+                           cols         <- getObjectAttributes
                            objCount     <- runDB $ count flt
                            rows         <- getRows aid pg objsPerPage flt listSort
                            adminLayout $ listingToContents $ 
@@ -63,7 +63,7 @@ getAdminPageR' pg aid = do flt          <- fmap (listFilter aid) getYesod
                                        , perPageCount    = objsPerPage
                                        , pageNumber      = pg
                                        , totalObjects    = objCount
-                                       , listingHeaders  = map columnTitle cols
+                                       , listingHeaders  = map attributeTitle cols
                                        , listingRows     = rows
                                        }
 
@@ -86,8 +86,8 @@ getRow :: YesodAdmin master v
        -> [AdminKVPair master v]
        -> AdminHandler master v [(Route master, [Text])]
 getRow aid liftR = fmap (filter readable) . sequence . map (mapper cols)
-       where cols = listColumns
-             mapper cols kvp@(k,v) = do r <- getColumns aid kvp cols
+       where cols = listAttributes
+             mapper cols kvp@(k,v) = do r <- getAttributes aid kvp cols
                                         return (liftR $ AdminReadR k, r)
              readable (_,x) = not $ null x
 
@@ -104,24 +104,26 @@ getObjects p n filter sort = runDB $ selectList filter opts
                  start  = p * n
 
 
-getColumn :: YesodAdmin master v
-          => AuthId master
-          -> AdminKVPair master v
-          -> Column v
-          -> AdminHandler master v Text
-getColumn aid kvp@(k,v) col = do perm <- canReadColumn aid kvp col
-                                 if perm then runDB $ columnDisplay col v
-                                    else return ""
+getAttribute :: YesodAdmin master v
+             => AuthId master
+             -> AdminKVPair master v
+             -> Attribute v
+             -> AdminHandler master v Text
+getAttribute aid kvp@(k,v) col
+             = do perm <- canReadAttribute aid kvp col
+                  if perm then runDB $ attributeDisplay col v
+                          else return ""
 
-getColumns :: YesodAdmin master v
-           => AuthId master
-           -> AdminKVPair master v
-           -> [Column v]
-           -> AdminHandler master v [Text]
+getAttributes :: YesodAdmin master v
+              => AuthId master
+              -> AdminKVPair master v
+              -> [Attribute v]
+              -> AdminHandler master v [Text]
 
-getColumns aid kvp cols = do perm <- canRead aid kvp
-                             if perm then sequence $ map (getColumn aid kvp) cols
-                                else return []
+getAttributes aid kvp cols
+              = do perm <- canRead aid kvp
+                   if perm then sequence $ map (getAttribute aid kvp) cols
+                      else return []
 
 {-
 
@@ -130,7 +132,7 @@ Developer notes.
 
 
 The definition of the next few functions look pointless however they
-are used to silence the type checker. For example using listColumns
+are used to silence the type checker. For example using listAttributes
 directly in expressions would not work because of ambiguity of types.
 The explicit handler types fixes these ambiguities. 
 
@@ -144,6 +146,6 @@ getObjectParams :: YesodAdmin master v
                 -> AdminHandler master v a
 getObjectParams f = return $ f undefined
 
-getObjectColumns :: YesodAdmin master v
-                 => AdminHandler master v [Column v]
-getObjectColumns = return listColumns
+getObjectAttributes :: YesodAdmin master v
+                    => AdminHandler master v [Attribute v]
+getObjectAttributes = return listAttributes
