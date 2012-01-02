@@ -67,11 +67,8 @@ monadP m = classP ''Monad [m]
 persistType :: PersistEntity v
             => v
             -> TypeQ
-            -> TypeQ
-persistType v backend = appT (conT genericName) backend
-       where genericName = mkName (entityName (entityDef v) ++ "Generic")
-
-
+persistType = conT . mkName . entityName . entityDef
+      
 -- | Generates the entities type alias name
 entityAdmin :: String -- ^ the persistent entity
             -> String

@@ -60,7 +60,6 @@ module Yesod.Admin.TH.Entity
        , deriveAttributeDisplay
        ) where
 
-import Data.Text (Text, pack, empty)
 import Data.Char
 import Data.List
 import Data.Maybe
@@ -131,7 +130,12 @@ declares the following:
   2. The function @getFooAdmin@
 
 This is to facilitate hooking of the admin subsite to the main
-subsite.
+subsite. You can then include the route of the kind
+
+> /admin/foo FooAdminR FooAdmin getFooAdmin
+
+in your main routes file.
+
 
 -}
 
@@ -235,14 +239,13 @@ deriveAdministrable' :: PersistEntity v
                      => AdminInterface v
                      -> DecQ
 deriveAdministrable  = fmap (:[]) . deriveAdministrable'
-deriveAdministrable' ai = mkInstance [] ''Administrable [vtype] instBody
-      where vtype   = persistType v $ varT $ mkName "b"
-            v       = getObject ai
-            cols    = attributes ai
+deriveAdministrable' ai = mkInstance [] ''Administrable [persistType v] instBody
+      where v        = getObject ai
+            ats      = attributes ai
             instBody = singularPlural ai
-                     ++ [ defListAttributes v $ listing ai
-                        , defAttribute v cols
-                        , defAttributeTitle v cols $ attributeTitleOverride ai
+                     ++ [ defAttribute v ats
+                        , defAttributeTitle v ats $ attributeTitleOverride ai
+                        , defListAttributes v $ listing ai
                         ]
 
 -- | Derive an instance of `InlineDisplay` for the type `v` given the
@@ -254,10 +257,10 @@ deriveInlineDisplay' :: PersistEntity v
                      => AdminInterface v
                      -> DecQ
 deriveInlineDisplay = fmap (:[]) . deriveInlineDisplay'
-deriveInlineDisplay' ai = mkInstance [monadP m, persistBackendP b m]
-                          ''InlineDisplay [b, m, persistType v b] instBody
-     where b = varT $ mkName "b"
-           m = varT $ mkName "m"
+deriveInlineDisplay' ai = mkInstance []
+                          ''InlineDisplay [sub, master, persistType v] instBody
+     where sub    = varT $ mkName "sub"
+           master = varT $ mkName "master"
            v = getObject ai
            body = normalB $ displayRHS v $ inline ai
            instBody = [valD (varP 'inlineDisplay) body []]
@@ -272,13 +275,12 @@ deriveAttributeDisplay' :: PersistEntity v
                      => AdminInterface v
                      -> DecQ
 deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
-
 deriveAttributeDisplay' ai
-            = mkInstance [monadP m, persistBackendP b m]
-                    ''AttributeDisplay [b, m, persistType v b]
+            = mkInstance []
+                    ''AttributeDisplay [sub, master, persistType v]
                      [ defAttributeDisplay v $ attributes ai]
-     where b = varT $ mkName "b"
-           m = varT $ mkName "m"
+     where sub    = varT $ mkName "sub"
+           master = varT $ mkName "master"
            v = getObject ai
 
 
@@ -323,24 +325,23 @@ defListAttributes  :: PersistEntity v
                 => v
                 -> [String]
                 -> DecQ
-defListAttributes v cols = valD (varP 'listAttributes) body []
-    where cons = map (conE . mkName) $ map (constructor v) cols
+defListAttributes v ats = valD (varP 'listAttributes) body []
+    where cons = map (conE . mkName) $ map (constructor v) ats
           body = normalB $ listE cons
 
 
 -- | Define the attribute data type.
 defAttribute :: PersistEntity v
-          => v
-          -> [String]
-          -> DecQ
-defAttribute v cols = dataInstD (cxt []) ''Attribute [typ] (map mkConQ cons) []
-     where b    = varT $ mkName "b"
-           cons = map (constructor v) cols
-           typ  = persistType v b
+             => v
+             -> [String]
+             -> DecQ
+defAttribute v ats = dataInstD (cxt []) ''Attribute [persistType v]
+                               (map mkConQ cons) []
+     where cons = map (constructor v) ats
            mkConQ = flip normalC [] . mkName 
 
 
-defAttributeFunc :: Name              -- ^ The name of the function
+defAttributeFunc :: Name          -- ^ The name of the function
              -> [(String, ExpQ)]  -- ^ The constructors
              -> DecQ
 defAttributeFunc name consExp = funD name clauses
@@ -349,16 +350,21 @@ defAttributeFunc name consExp = funD name clauses
                       where cP = conP (mkName c) []
 
 defAttributeTitle :: PersistEntity v
-              => v
-              -> [ String ]
-              -> [(String,String)]
-              -> DecQ
-defAttributeTitle v cols override = defAttributeFunc 'attributeTitle $ map titleExp cols
-    where titleExp col = (constructor v col, litE . stringL $ getTitle col)
-          getTitle col = fromMaybe (capitalise $ unCamelCase col) $ lookup col override
-
+                  => v
+                  -> [ String ]
+                  -> [(String,String)]
+                  -> DecQ
+defAttributeTitle v ats override = defAttributeFunc 'attributeTitle 
+                                                    $ map titleExp ats
+    where titleExp at = (constructor v at, litE . stringL $ getTitle at)
+          getTitle at = fromMaybe (capitalise $ unCamelCase at) 
+                                  $ lookup at override
+defAttributeDisplay :: PersistEntity v
+                    => v
+                    -> [String]
+                    -> DecQ
 defAttributeDisplay v =  defAttributeFunc 'attributeDisplay . map colDisplay 
-    where colDisplay col = (constructor v col, displayRHS v col)
+    where colDisplay at = (constructor v at, displayRHS v at)
 
 
 getObject :: PersistEntity v
@@ -388,7 +394,7 @@ displayRHS :: PersistEntity v
            => v
            -> String
            -> ExpQ
-displayRHS v col | isDBAttribute col
-                                 = let fname = varE $ mkName $ fieldName v col
+displayRHS v at | isDBAttribute at
+                                 = let fname = varE $ mkName $ fieldName v at
                                        in [| inlineDisplay . $fname |]
-                 | otherwise     = varE $ mkName col
+                | otherwise      = varE $ mkName at

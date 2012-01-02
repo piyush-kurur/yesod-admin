@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeSynonymInstances      #-}
 {-# LANGUAGE QuasiQuotes               #-}
 {-# LANGUAGE OverlappingInstances      #-}
+{-# LANGUAGE UndecidableInstances     #-}
 
 
 {-|
@@ -131,44 +132,54 @@ Haskell function.
 
 -}
 
-instance (PersistEntity v, InlineDisplay b m v)
-         => InlineDisplay b m (Key b v) where
-        
-         inlineDisplay key = do maybev <- get key
-                                maybe (return "Bad Key") inlineDisplay maybev
-
-instance InlineDisplay b m v => InlineDisplay b m (Maybe v) where
-         inlineDisplay mv = do maybe (return "") inlineDisplay mv
-
-class (Monad m, PersistBackend b m) => InlineDisplay b m a where
-      inlineDisplay :: a -> b m Text
+class InlineDisplay sub master a where
+      inlineDisplay :: a -> GHandler sub master Text
 
 -- We now declare InlineDisplay instance for all the standard persist
 -- values.
 
-instance PersistBackend b m => InlineDisplay b m Text where
+instance InlineDisplay sub master Text where
          inlineDisplay = return
 
-instance PersistBackend b m => InlineDisplay b m String where
+instance InlineDisplay sub master String where
          inlineDisplay = return . pack
 
-instance PersistBackend b m => InlineDisplay b m ByteString where
+instance InlineDisplay sub master ByteString where
          inlineDisplay = return . pack . show
 
-instance PersistBackend b m => InlineDisplay b m Double where
+instance InlineDisplay sub master Double where
          inlineDisplay = return . pack . show
 
-instance PersistBackend b m => InlineDisplay b m Int where
+instance InlineDisplay sub master Bool where
          inlineDisplay = return . pack . show
 
-instance PersistBackend b m => InlineDisplay b m Bool where
+instance InlineDisplay sub master Day where
+         inlineDisplay = return 
+                       . pack
+                       . formatTime defaultTimeLocale "%d %b, %Y" 
+
+instance InlineDisplay sub master UTCTime where
+         inlineDisplay = return
+                       . pack
+                       . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
+
+
+instance Show a => InlineDisplay sub master a where
          inlineDisplay = return . pack . show
 
-instance PersistBackend b m => InlineDisplay b m Day where
-         inlineDisplay = return . pack . formatTime defaultTimeLocale "%d %b, %Y" 
+instance InlineDisplay sub master v
+         => InlineDisplay sub master (Maybe v) where
+         inlineDisplay mv = maybe (return "") inlineDisplay mv
 
-instance PersistBackend b m => InlineDisplay b m UTCTime where
-         inlineDisplay = return . pack . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
+instance ( YesodPersist master
+         , PersistEntity v
+         , b ~ YesodPersistBackend master
+         , m ~ GGHandler sub master IO
+         , PersistBackend b m
+         , InlineDisplay sub master v
+         ) => InlineDisplay sub master (Key b v) where
+         inlineDisplay key = do maybev <- runDB $ get key
+                                maybe (return "Bad Key") inlineDisplay maybev
 
 
 
@@ -177,12 +188,12 @@ instance PersistBackend b m => InlineDisplay b m UTCTime where
 -- require hitting the database and hence the function is not a pure
 -- haskell function.
 
-class (PersistBackend b m, Administrable v)
-      => AttributeDisplay b m v where
+class Administrable v
+      => AttributeDisplay sub master v where
       attributeDisplay  :: Attribute v  -- ^ The attribute
                         -> v            -- ^ The value whose attribute
                                         -- is required
-                        -> b m Text
+                        -> GHandler sub master Text
 
 -- | Captures Yesod auth sites that admins. An admin is a user who has
 -- some of the administartive previledges. A super user is an admin
@@ -288,12 +299,10 @@ class ( YesodPersist master
       , HasAdminUser master
       , HasAdminLayout master
       , Administrable v
-      , InlineDisplay (YesodPersistBackend master)
-                      (GGHandler (Admin master v) master IO)
-                      v
-      , AttributeDisplay (YesodPersistBackend master)
-                      (GGHandler (Admin master v) master IO)
-                      v
+      , PersistBackend (YesodPersistBackend master)
+                       (GGHandler (Admin master v) master IO)
+      , InlineDisplay (Admin master v) master v
+      , AttributeDisplay (Admin master v) master v
       ) => YesodAdmin master v where
 
       -- | This filter controls what objects are displayed to a given

@@ -111,7 +111,7 @@ getAttribute :: YesodAdmin master v
              -> AdminHandler master v Text
 getAttribute aid kvp@(k,v) col
              = do perm <- canReadAttribute aid kvp col
-                  if perm then runDB $ attributeDisplay col v
+                  if perm then attributeDisplay col v
                           else return ""
 
 getAttributes :: YesodAdmin master v
