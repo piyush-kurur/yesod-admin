@@ -52,38 +52,36 @@ such an interface.
 Before we go into the details of how this is done let us explain few
 concepts that are relevant for effective use of the admin site.
 
-   * Column display: In an admin site we would want to list all the
-     objects of a particular kind. Such lists will be shown as a table
-     with columns showing attributes of the object. By /column
-     display/ we mean such a display. The attributes shown in the
-     display will be called /administrative columns/ or just
-     /columns/.
+   * Listings: In an admin site we would want to list all the objects
+     of a particular kind. Such lists will be shown as a table with
+     columns showing attributes of the object. By /listings/ we
+     mean such a display.
 
-   * Column title: Each column of an object has /column title/ which
-     shows what the attribute is.
+   * Attribute title: Attributes have /attribute title/ which is
+     shown in the header of a listing.
    
-   * Constructed columns or derived columns: The /administrative
-     columns/ of an object /need not/ be a database column of an
-     object. For example, one might be storing the date of birth
-     inside the database but would like to show the age of a person.
-     An administrative column which is /not/ a database column will be
-     called a /constructed/ or /derived/ column.
+   * Constructed attributes or derived attributes: The attributes of
+     an object /need not/ be a database column of an object. For
+     example, date of birth inside the might be a database column we
+     would like to show the age of a person.  An attribute which is
+     /not/ a database column will be called a /constructed/ or
+     /derived/ attribute.
 
    * Inline display: Often we would also want to displaying objects in
-     running text or even inside columns of a particular object.  This
-     mode of display is called inline display. Just like columns an
-     inline display need not show a database column of the entity.
-     For example to avoid duplication while showing people, one might
-     want to use name together with email address.
+     running text or even inside attributes of a particular object.
+     This mode of display is called inline display. Just like
+     attributes an inline display need not show a database column of
+     the entity.  For example to avoid duplication while showing
+     people, one might want to use name together with email address.
 
-An admin interface should give ways of configuring both the column
-display and the inline display.
+An admin interface should give ways of configuring both the listing
+and the inline display.
 
 -}
 
 {- $basic 
 
-We give a quick discription of how use this library. Firstly make sure
+We give a quick description of how use this library. Firstly make sure
 that your master site is an instances of
 
    1. YesodPersist: Clearly you need this otherwise what will you
@@ -104,13 +102,14 @@ site.
 >          isAdminUser authid = ....
 
 Both 'isSuperUser authid' and 'isAdminUser authid' are your site
-handlers (i.e. 'GHandler' sub Site Bool) returns a 'Bool' indicating
-whether the users are super users or admin users. For more details
-check "Yesod.Admin.Class"
+handlers (i.e. 'GHandler' sub Site Bool) that returns a boolean value
+indicating whether the input userid are super users or admin users
+respectively. For more details check "Yesod.Admin.Class"
 
-Now you need to perpare each entity to have an admininstrative
-interfaces. We explain this with an example. Let us say you have a
-entity defined as follows.
+All the above stuff you need to do once for each site.  The next step
+is to prepare each entity to for an admininstrative interfaces. We
+explain this with an example. Let us say you have a entity defined as
+follows.
 
 >      [persist|
 >                Person
@@ -134,8 +133,11 @@ column of Person.
 
 The function `mkYesodAdmin` declares all the instances and other
 sundry like the type alias @PersonAdmin@ (it is an alias to @`Admin`
-Site Person@) and the function @getPersonAdmin@. You can then hook the
-admin site of person to the main site as follows.
+Site Person@) and the function @getPersonAdmin@. 
+
+
+Finally, you can the hook the admin site of person to the main site as
+follows.
 
 > mkYesod "Site" [parseRoutes|
 >                / RootR GET
@@ -167,13 +169,14 @@ change this by changing the above code as follows
 >                          :: AdminInterface Person
 >             )
 
-In both lisiting and inline we follow the convention that
+In both listings and inline we follow the convention that
    
-   * Strings starting with an upper case letter denote database columns.
+   * Strings starting with an upper case letter denote database
+     columns.
 
-   * Strings starting with a lower case letter denotes a constructed column.
-     In this case you should have a function with the same name which returns
-     the textual representation.
+   * Strings starting with a lower case letter denotes a constructed
+     attribute.  In this case you should have a function with the same
+     name which returns the textual representation.
      
 For more details on what all can be configured check out the
 documentation of the `AdminInterface` type
@@ -184,8 +187,8 @@ documentation of the `AdminInterface` type
 
 Often one would want to give links to the admin page from various
 location. The Yesod way of giving links is via type safe urls. For
-example to give a link to the listing of Person in a hamlet file
-you could use something like
+example to give a link to the listing of Person in a hamlet file you
+could use something like
 
 > [hamlet| Go to the <a href=@{PersonAdminR AdminListR}>
 >          list of persons
@@ -212,10 +215,10 @@ that you need to know in case you want to do something non-standard.
      * Hand generation of admin code: You will need to refer to the
        modules "Yesod.Admin.Class" mostly.
 
-     * Admin site routes: To know about the admin subsite and the various
-       routes refer the module "Yesod.Admin.Subsite"
+     * Admin site routes: To know about the admin subsite and the
+       various routes refer the module "Yesod.Admin.Subsite"
 
-     * Type aliases: The module "Yesod.Admin.Types" have some type aliases
-       that can shorten some type signatures.
+     * Type aliases: The module "Yesod.Admin.Types" have some type
+       aliases that can shorten some type signatures.
 
 -}
