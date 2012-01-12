@@ -17,7 +17,6 @@ module Yesod.Admin.Render
 
 import Data.Text(Text)
 import Yesod
-import Yesod.Admin.Types
 
 -- | Admin pages show the listing of objects. This is the data type
 -- that controls it.
@@ -29,9 +28,9 @@ data Listing master = Listing { listingSingular     :: Text
                               , listingHeaders  :: [Text]
                                       -- ^ The headers of the listing
                               , listingRows     :: [(Route master, [Text])]
-                                      -- ^ The actual list. The id's
-                                      -- of objects are provied to
-                                      -- facilitate generating links.
+                                      -- ^ The actual list. The route
+                                      -- to the object is provided to
+                                      -- facilitate linking.
                               , pageNumber      :: Int
                                       -- ^ Current page.
                               , perPageCount    :: Int

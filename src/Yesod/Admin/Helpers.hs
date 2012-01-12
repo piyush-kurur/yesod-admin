@@ -12,9 +12,14 @@ import Data.List
 
 unCamelCase :: String -> String
 unCamelCase = unwords . map (map toLower) . groupBy breaker
-       where breaker x y = not $ isUpper y
+       where breaker _ y = not $ isUpper y
 
-capitalise   (x:xs) = toUpper x : xs
+capitalise :: String -> String
+capitalise []     = []
+capitalise (x:xs) = toUpper x : xs
+
+unCapitalise :: String -> String
+unCapitalise []     = []
 unCapitalise (x:xs) = toLower x : xs
 
 camelCase :: String -> String

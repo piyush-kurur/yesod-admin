@@ -15,8 +15,7 @@ module Yesod.Admin.Render.Defaults
        , defaultAdminStyles
        ) where
 
-import Text.Blaze
-import Data.Text(Text, toLower)
+import Data.Text(Text)
 import Text.Hamlet
 import Text.Cassius
 import Yesod
@@ -39,6 +38,7 @@ defaultListing lst = addWidget [whamlet|
       where taggedRows = zip (cycle ["odd" :: Text, "even"]) tableRows
             tableRows  = map link $ listingRows lst
             link (route, t:ts) = sequence_  (mkLink route t : map mkText ts)
+            link (_, [])       = return ()
             objects = if totalObjects lst > 1 then listingPlural lst
                       else listingSingular lst
 
@@ -73,40 +73,56 @@ defaultAdminStyles = do addCassius adminStyle
                         addCassius buttonStyle
 
 -- | Colours of the main panel
-
+mainPanelBackground :: Text
+mainPanelText       :: Text
+mainPanelPadding    :: Text
+mainPanelPaddingSides :: Text
 mainPanelBackground  = "black" :: Text
 mainPanelText        = "white" :: Text
 mainPanelPadding      = "1em" :: Text
 mainPanelPaddingSides = "0.25em" :: Text
 
 -- | Panel properties
+panelBackground :: Text
+panelTextColour :: Text
 panelBackground     = "#DDDDDD" :: Text
 panelTextColour     = "black" :: Text
 
 
 -- | General  Border properties
+borderColour :: Text
+borderWidth  :: Text
 borderColour     = "DarkGrey" :: Text
 borderWidth      = "thin"    :: Text
 
 -- | Borders of hilighted entries
-
+highlightWidth :: Text
+highlightColour :: Text
 highlightWidth   = "thin"   :: Text
 highlightColour  = "black"   :: Text
  
 
-penColour            = "black"     :: Text
+penColour :: Text
+penColour = "black"     :: Text
 
 -- | Colour of links.
-linkColour           = "DarkCyan"  :: Text
+linkColour :: Text
+linkColour  = "DarkCyan"  :: Text
 
 -- Colour and width of shadow objects.
+shadowColour :: Text
+shadowWidth :: Text
 shadowColour    = "#999999" :: Text
 shadowWidth     = "10px"    :: Text
 
 -- | Alternating colours of a zebra table
+zebraOddColour  :: Text
+zebraEvenColour :: Text
 zebraOddColour  = "white"      :: Text
 zebraEvenColour = "#F0F0F0"  :: Text
 
+vspace :: Text
+hspace :: Text
 vspace          = "0.25em"   :: Text
 hspace          = "0.5em"    :: Text
 

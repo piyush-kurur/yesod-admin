@@ -12,7 +12,7 @@ Declares the yesod dispatch instance for the admin subsite.
 
 -}
 
-module Yesod.Admin.Dispatch where
+module Yesod.Admin.Dispatch() where
 
 import Data.Text(Text)
 

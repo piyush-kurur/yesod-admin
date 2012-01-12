@@ -51,7 +51,6 @@ module Yesod.Admin.Class
        , YesodAdmin(..)
        ) where
 
-import Data.Int
 import Data.ByteString (ByteString)
 import Data.Text(Text, append, pack)
 import System.Locale

@@ -9,7 +9,6 @@ module Yesod.Admin.Handlers.Internal.AdminCreateR
        ) where
 
 import Yesod
-import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 
 getAdminCreateR :: Yesod master

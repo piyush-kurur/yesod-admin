@@ -188,8 +188,8 @@ mkEntityAdmin :: PersistEntity v
               -> AdminInterface v
               -> DecsQ
 mkEntityAdmin site ai = do insts <- sequence [ deriveAdministrable' ai
-                                             , deriveInlineDisplay' ai
-                                             , deriveAttributeDisplay' ai
+                                             , deriveInlineDisplay'  site ai
+                                             , deriveAttributeDisplay' site ai
                                              ]
                            aliases <- defEntityAliases site entity
                            return (insts ++ aliases)
@@ -251,16 +251,25 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType v] instBody
 -- | Derive an instance of `InlineDisplay` for the type `v` given the
 -- AdminInterface for `v`.
 deriveInlineDisplay  :: PersistEntity v
-                     => AdminInterface v
+                     => String            -- ^ the site's foundation type
+                     -> AdminInterface v  -- ^ the administrative interface
                      -> DecsQ
+
+-- | Same as `deriveInlineDisplay` but does not wrap the declaration
+-- inside a list. Not very useful in the wild as splicing expects
+-- `DecsQ` instead `DecQ` but useful in defining other template
+-- haskell function. Currently not exported.
+
 deriveInlineDisplay' :: PersistEntity v
-                     => AdminInterface v
+                     => String
+                     ->AdminInterface v
                      -> DecQ
-deriveInlineDisplay = fmap (:[]) . deriveInlineDisplay'
-deriveInlineDisplay' ai = mkInstance []
-                          ''InlineDisplay [sub, master, persistType v] instBody
+deriveInlineDisplay site = fmap (:[]) . deriveInlineDisplay' site
+deriveInlineDisplay' site ai
+                     = mkInstance [] 
+                          ''InlineDisplay [sub, siteT, persistType v] instBody
      where sub    = varT $ mkName "sub"
-           master = varT $ mkName "master"
+           siteT  = conT $ mkName site
            v = getObject ai
            body = normalB $ displayRHS v $ inline ai
            instBody = [valD (varP 'inlineDisplay) body []]
@@ -268,20 +277,27 @@ deriveInlineDisplay' ai = mkInstance []
 -- | Derive an instance of `AttributeDisplay` for the type `v` given
 -- the AdminInterface for `v`.
 deriveAttributeDisplay :: PersistEntity v
-                    => AdminInterface v
+                    => String             -- ^ the site's foundation type
+                    -> AdminInterface v   -- ^ the administrative interface
                     -> DecsQ
 
+-- | Same as `deriveAttributeDisplay` but does not wrap the
+-- declaration inside a list. Not very useful in the wild as splicing
+-- expects `DecsQ` instead `DecQ` but useful in defining other
+-- template haskell function. Currently not exported
+
 deriveAttributeDisplay' :: PersistEntity v
-                     => AdminInterface v
-                     -> DecQ
-deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
-deriveAttributeDisplay' ai
+                        => String        -- ^ the site's foundation type
+                        -> AdminInterface v -- ^ the administrative interface
+                        -> DecQ
+deriveAttributeDisplay site = fmap (:[]) . deriveAttributeDisplay' site
+deriveAttributeDisplay' site ai
             = mkInstance []
-                    ''AttributeDisplay [sub, master, persistType v]
+                    ''AttributeDisplay [sub, siteT, persistType v]
                      [ defAttributeDisplay v $ attributes ai]
-     where sub    = varT $ mkName "sub"
-           master = varT $ mkName "master"
-           v = getObject ai
+     where sub   = varT $ mkName "sub"
+           siteT = conT $ mkName site
+           v     = getObject ai
 
 
 -- | The TH code @defAdmin Site Foo@ generates the following

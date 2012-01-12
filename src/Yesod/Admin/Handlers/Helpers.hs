@@ -13,8 +13,6 @@ import Text.Hamlet
 import Yesod
 import Yesod.Auth
 import Yesod.Admin.Class
-import Yesod.Admin.Subsite
-import Yesod.Admin.Types
 
 -- | This function checks whether the authenticated user is an admin user. It 
 -- gives the login page if not authenticated and checks admin permissions if

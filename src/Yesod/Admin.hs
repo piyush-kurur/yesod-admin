@@ -40,7 +40,7 @@ import Yesod.Admin.Types
 import Yesod.Admin.Handlers
 import Yesod.Admin.Render
 import Yesod.Admin.TH
-import Yesod.Admin.Dispatch
+import Yesod.Admin.Dispatch()
 
 {- $concepts
 

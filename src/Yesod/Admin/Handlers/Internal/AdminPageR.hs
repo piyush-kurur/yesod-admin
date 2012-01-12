@@ -29,10 +29,10 @@ Developers notes
 
 The code for this handler is likely to be the most complicated as its
 output depend on a lot of parameters. As more features are added the
-mess is only goint to increase. It makes sense to fanatically refactor
+mess is only going to increase. It makes sense to fanatically refactor
 the code here.
 
-Most of it is straight forward modulo the fact that some combinatorts
+Most of it is straight forward modulo the fact that some combinators
 need explicit types to fix type ambiguities. There are lots of tedious
 details that need to be computed to perform the listing. Besides that
 there is nothing great that is happening here.
@@ -53,7 +53,6 @@ getAdminPageR' pg aid = do flt          <- fmap (listFilter aid) getYesod
                            objsPerPage  <- getObjectParams objectsPerPage
                            lstSing      <- getObjectParams objectSingular
                            lstPlur      <- getObjectParams objectPlural
-                           liftR        <- getRouteToMaster
                            cols         <- getObjectAttributes
                            objCount     <- runDB $ count flt
                            rows         <- getRows aid pg objsPerPage flt listSort
@@ -76,19 +75,19 @@ getRows :: YesodAdmin master v
         -> [SelectOpt v]     -- ^ Sorting options
         -> AdminHandler master v [(Route master, [Text])] 
 
-getRows aid p n filter sort = do liftR <- getRouteToMaster
-                                 kvps  <- getObjects p n filter sort
-                                 getRow aid liftR kvps
+getRows aid p n fltr sort = do liftR <- getRouteToMaster
+                               kvps  <- getObjects p n fltr sort
+                               getRow aid liftR kvps
 
 getRow :: YesodAdmin master v
        => AuthId master
        -> (Route (Admin master v) -> Route master)
        -> [AdminKVPair master v]
        -> AdminHandler master v [(Route master, [Text])]
-getRow aid liftR = fmap (filter readable) . sequence . map (mapper cols)
-       where cols = listAttributes
-             mapper cols kvp@(k,v) = do r <- getAttributes aid kvp cols
-                                        return (liftR $ AdminReadR k, r)
+getRow aid liftR = fmap (filter readable) . sequence . map (mapper attrs)
+       where attrs = listAttributes
+             mapper ats kvp@(k,_) = do r <- getAttributes aid kvp ats
+                                       return (liftR $ AdminReadR k, r)
              readable (_,x) = not $ null x
 
 
@@ -99,7 +98,7 @@ getObjects :: YesodAdmin master v
            -> [Filter v]        -- ^ filters to apply
            -> [SelectOpt v]     -- ^ Sorting options
            -> AdminHandler master v [AdminKVPair master v]
-getObjects p n filter sort = runDB $ selectList filter opts
+getObjects p n fltr sort = runDB $ selectList fltr opts
            where opts   = sort ++ [OffsetBy start, LimitTo n]
                  start  = p * n
 
@@ -109,9 +108,9 @@ getAttribute :: YesodAdmin master v
              -> AdminKVPair master v
              -> Attribute v
              -> AdminHandler master v Text
-getAttribute aid kvp@(k,v) col
-             = do perm <- canReadAttribute aid kvp col
-                  if perm then attributeDisplay col v
+getAttribute aid kvp@(_,v) at
+             = do perm <- canReadAttribute aid kvp at
+                  if perm then attributeDisplay at v
                           else return ""
 
 getAttributes :: YesodAdmin master v
@@ -120,9 +119,9 @@ getAttributes :: YesodAdmin master v
               -> [Attribute v]
               -> AdminHandler master v [Text]
 
-getAttributes aid kvp cols
+getAttributes aid kvp ats
               = do perm <- canRead aid kvp
-                   if perm then sequence $ map (getAttribute aid kvp) cols
+                   if perm then sequence $ map (getAttribute aid kvp) ats
                       else return []
 
 {-

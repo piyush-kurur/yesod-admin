@@ -59,8 +59,11 @@ mkInstance context cls args defs = instanceD (cxt context) inst defs
 
 
 -- ^ Generates PersistBackend constraint.
+persistBackendP :: TypeQ -> TypeQ -> PredQ
 persistBackendP b m = classP ''PersistBackend [b,m]
+
 -- ^ Generate Monad constraint.
+monadP :: TypeQ -> PredQ
 monadP m = classP ''Monad [m]
 
 -- | The type name of a persist entity.

@@ -12,13 +12,10 @@ module Yesod.Admin.Handlers.Internal.AdminListR
        ) where
 
 import Yesod
-import Text.Hamlet
-import Text.Cassius
 
 import Yesod.Admin.Class
 import Yesod.Admin.Subsite
 import Yesod.Admin.Types
-import Yesod.Admin.Handlers.Helpers
 
 
 getAdminListR :: ( Yesod master
