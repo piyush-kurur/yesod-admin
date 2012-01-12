@@ -147,12 +147,6 @@ instance InlineDisplay sub master String where
 instance InlineDisplay sub master ByteString where
          inlineDisplay = return . pack . show
 
-instance InlineDisplay sub master Double where
-         inlineDisplay = return . pack . show
-
-instance InlineDisplay sub master Bool where
-         inlineDisplay = return . pack . show
-
 instance InlineDisplay sub master Day where
          inlineDisplay = return 
                        . pack
@@ -164,13 +158,6 @@ instance InlineDisplay sub master UTCTime where
                        . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
 
 
-instance Show a => InlineDisplay sub master a where
-         inlineDisplay = return . pack . show
-
-instance InlineDisplay sub master v
-         => InlineDisplay sub master (Maybe v) where
-         inlineDisplay mv = maybe (return "") inlineDisplay mv
-
 instance ( YesodPersist master
          , PersistEntity v
          , b ~ YesodPersistBackend master
@@ -181,6 +168,14 @@ instance ( YesodPersist master
          inlineDisplay key = do maybev <- runDB $ get key
                                 maybe (return "Bad Key") inlineDisplay maybev
 
+instance InlineDisplay sub master v
+         => InlineDisplay sub master (Maybe v) where
+         inlineDisplay mv = maybe (return "") inlineDisplay mv
+
+instance Show a => InlineDisplay sub master a where
+         inlineDisplay = return
+                       . pack
+                       . show
 
 
 -- | This class captures display of attributes of an object. Like in
