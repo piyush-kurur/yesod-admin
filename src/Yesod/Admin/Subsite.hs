@@ -48,7 +48,7 @@ these generic routes hence we have to code these by hand.
 In case you want to link to various admin pages you will need to use
 the constructors of this type. Make sure to lift the routes to roots
 of the master site. See the function
-'Yesod.Admin.Handlers.toMasterRoute'
+@"Yesod.Admin.Handlers".'toMasterRoute'@
 
 -}
 

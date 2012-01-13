@@ -62,10 +62,11 @@ concepts that are relevant for effective use of the admin site.
    
    * Constructed attributes or derived attributes: The attributes of
      an object /need not/ be a database column of an object. For
-     example, date of birth inside the might be a database column we
-     would like to show the age of a person.  An attribute which is
-     /not/ a database column will be called a /constructed/ or
-     /derived/ attribute.
+     example, date of birth might be a database column, however we
+     would like to show the age of a person instead of DOB in
+     listings. In this case the age is a derived attribute. An
+     attribute which is /not/ a database column will be called a
+     /constructed/ or /derived/ attribute.
 
    * Inline display: Often we would also want to displaying objects in
      running text or even inside attributes of a particular object.
@@ -101,10 +102,10 @@ site.
 >          isSuperUser authid = ....
 >          isAdminUser authid = ....
 
-Both 'isSuperUser authid' and 'isAdminUser authid' are your site
-handlers (i.e. 'GHandler' sub Site Bool) that returns a boolean value
-indicating whether the input userid are super users or admin users
-respectively. For more details check "Yesod.Admin.Class"
+Both @`isSuperUser` authid@ and @`isAdminUser` authid@ are your site
+handlers (i.e. @'GHandler' sub Site Bool@) that returns a boolean
+value indicating whether the input userid are super users or admin
+users respectively. For more details check "Yesod.Admin.Class"
 
 All the above stuff you need to do once for each site.  The next step
 is to prepare each entity to for an admininstrative interfaces. We
