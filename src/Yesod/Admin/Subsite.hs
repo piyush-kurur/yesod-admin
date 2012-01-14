@@ -77,15 +77,15 @@ type instance Route (Admin master v) = AdminRoute (YesodPersistBackend master) v
 -- | The data type that captures the admin related routes of an
 -- object.
 
-data AdminRoute backend v = AdminListR          -- ^ Route to list the objects.
-                          | AdminPageR   Int    -- ^ Route to paged listing.
-                          | AdminCreateR        -- ^ Route to create an object
+data AdminRoute backend v = AdminListR        -- ^ list the objects.
+                          | AdminPageR   Int  -- ^ page n of listing.
+                          | AdminCreateR      -- ^ create an object
                           | AdminReadR   (Key backend v)
-                                                -- ^ Route to view an object
+                                              -- ^ view an object
                           | AdminUpdateR (Key backend v)
-                                                -- ^ Route to update an objects
+                                              -- ^ update an objects
                           | AdminDeleteR (Key backend v)
-                                                -- ^ Route to delete an object
+                                              -- ^ delete an object
                           deriving (Eq, Show, Read)
 
 
