@@ -131,47 +131,55 @@ Haskell function.
 
 -}
 
-class InlineDisplay sub master a where
-      inlineDisplay :: a -> GHandler sub master Text
+class (Monad m, PersistBackend b m)
+      => InlineDisplay b m a where
+      inlineDisplay :: a -> b m Text
 
 -- We now declare InlineDisplay instance for all the standard persist
 -- values.
 
-instance InlineDisplay sub master Text where
+instance (Monad m, PersistBackend b m) => InlineDisplay b m Text where
          inlineDisplay = return
 
-instance InlineDisplay sub master String where
+instance (Monad m, PersistBackend b m) => InlineDisplay b m String where
          inlineDisplay = return . pack
 
-instance InlineDisplay sub master ByteString where
+instance (Monad m, PersistBackend b m) =>
+         InlineDisplay b m ByteString where
          inlineDisplay = return . pack . show
 
-instance InlineDisplay sub master Day where
+instance (Monad m, PersistBackend b m) => InlineDisplay b m Day where
          inlineDisplay = return 
                        . pack
                        . formatTime defaultTimeLocale "%d %b, %Y" 
 
-instance InlineDisplay sub master UTCTime where
+instance (Monad m, PersistBackend b m) => InlineDisplay b m UTCTime where
          inlineDisplay = return
                        . pack
                        . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
 
 
-instance ( YesodPersist master
-         , PersistEntity v
-         , b ~ YesodPersistBackend master
-         , m ~ GGHandler sub master IO
+instance ( Monad m
          , PersistBackend b m
-         , InlineDisplay sub master v
-         ) => InlineDisplay sub master (Key b v) where
-         inlineDisplay key = do maybev <- runDB $ get key
+         , InlineDisplay b m v
+         , PersistEntity v
+         ) => InlineDisplay b m (Key b v) where
+         inlineDisplay key = do maybev <- get key
                                 maybe (return "Bad Key") inlineDisplay maybev
 
-instance InlineDisplay sub master v
-         => InlineDisplay sub master (Maybe v) where
+
+instance ( Monad m
+         , PersistBackend b m
+         , InlineDisplay b m v
+         )
+         => InlineDisplay b m (Maybe v) where
          inlineDisplay mv = maybe (return "") inlineDisplay mv
 
-instance Show a => InlineDisplay sub master a where
+instance ( Monad m
+         , PersistBackend b m
+         , Show a
+         )
+         => InlineDisplay b m a where
          inlineDisplay = return
                        . pack
                        . show
@@ -182,12 +190,15 @@ instance Show a => InlineDisplay sub master a where
 -- require hitting the database and hence the function is not a pure
 -- haskell function.
 
-class Administrable v
-      => AttributeDisplay sub master v where
+class ( Monad m
+      , PersistBackend b m
+      , Administrable v
+      )
+      => AttributeDisplay b m v where
       attributeDisplay  :: Attribute v  -- ^ The attribute
                         -> v            -- ^ The value whose attribute
                                         -- is required
-                        -> GHandler sub master Text
+                        -> b m Text
 
 -- | Captures Yesod auth sites that admins. An admin is a user who has
 -- some of the administartive previledges. A super user is an admin
@@ -203,10 +214,14 @@ class Administrable v
 -- 'isAdminUser' then only the superusers have access to the admin
 -- site.
 
-class YesodAuth master => HasAdminUser master where
-      isSuperUser :: AuthId master -> GHandler sub master Bool
+class ( YesodAuth master
+      , YesodPersist master
+      ) => HasAdminUser master where
+      isSuperUser :: Monad (YesodDB sub master)
+                  => AuthId master -> YesodDB sub master Bool
                   -- ^ Check whether the user is a superuser
-      isAdminUser :: AuthId master -> GHandler sub master Bool
+      isAdminUser :: Monad (YesodDB sub master)
+                  => AuthId master -> YesodDB sub master Bool
                   -- ^ Check whether the user is an admin. An
                   -- admin is a user who has access to some of
                   -- the admin facilities. All superusers are by
@@ -251,7 +266,7 @@ class Yesod master => HasAdminLayout master where
 
       adminLayout :: GWidget sub master a  -- ^ The admin widget to render
                   -> GHandler sub master RepHtml
-      adminLayout content = defaultAdminLayout $ do adminStyles
+      adminLayout content = defaultAdminLayout $ do _ <- adminStyles
                                                     [whamlet|
                                                         <div .branding>^{branding}
                                                         <div .content>^{content}
@@ -295,8 +310,12 @@ class ( YesodPersist master
       , Administrable v
       , PersistBackend (YesodPersistBackend master)
                        (GGHandler (Admin master v) master IO)
-      , InlineDisplay (Admin master v) master v
-      , AttributeDisplay (Admin master v) master v
+      , InlineDisplay  (YesodPersistBackend master)
+                       (GGHandler (Admin master v) master IO)
+                       v
+      , AttributeDisplay (YesodPersistBackend master)
+                         (GGHandler (Admin master v) master IO)
+                         v 
       ) => YesodAdmin master v where
 
       -- | This filter controls what objects are displayed to a given
@@ -313,7 +332,7 @@ class ( YesodPersist master
       -- user to create.
       canCreate  :: AuthId master -- ^ The user
                  -> v             -- ^ The object to create
-                 -> AdminHandler master v Bool
+                 -> AdminDB master v Bool
       canCreate authId _ = isSuperUser authId
 
       -- | Controls whether a user can replace a given object with a
@@ -321,14 +340,14 @@ class ( YesodPersist master
       canReplace :: AuthId master -- ^ The user
                  -> AdminKVPair master v -- ^ existing object
                  -> v                    -- ^ the new object
-                 -> AdminHandler master v Bool
+                 -> AdminDB master v Bool
       canReplace authId _ _ = isSuperUser authId
 
       -- | Controls whether a particular user is allowed to delete an
       -- object. By default only the super user is allowed.
       canDelete  :: AuthId master
                  -> AdminKVPair master v
-                 -> AdminHandler master v Bool
+                 -> AdminDB master v Bool
       canDelete authId _ = isSuperUser authId
 
       -- | Controls whether a particular user is allowed to read an
@@ -337,7 +356,7 @@ class ( YesodPersist master
       -- `listFilter` weeds them out.
       canRead :: AuthId master
               -> AdminKVPair master v
-              -> AdminHandler master v Bool
+              -> AdminDB master v Bool
       canRead authId _ = isSuperUser authId
 
       -- | Controls whether a particular user is allowed to read a
@@ -347,5 +366,5 @@ class ( YesodPersist master
       canReadAttribute  :: AuthId master
                         -> AdminKVPair master v
                         -> Attribute v     -- ^ Given attribute
-                        -> AdminHandler master v Bool
+                        -> AdminDB master v Bool
       canReadAttribute authId _ _ = isSuperUser authId
