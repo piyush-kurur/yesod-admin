@@ -52,12 +52,12 @@ module Yesod.Admin.Class
        ) where
 
 import Data.ByteString (ByteString)
-import Data.Text(Text, append, pack)
+import Data.Text(Text, append, pack, unpack)
 import System.Locale
 import Data.Time
+import Database.Persist.EntityDef
 import Yesod
 import Yesod.Auth
-import Database.Persist.Base
 import Yesod.Admin.Helpers
 import Yesod.Admin.Subsite
 import Yesod.Admin.Types
@@ -84,7 +84,12 @@ class PersistEntity v => Administrable v where
       -- in titles of admin pages. The default values is the entity
       -- name of the given persistent type.
       objectSingular :: v -> Text
-      objectSingular = pack . unCamelCase . entityName . entityDef
+      objectSingular = pack 
+                     . unCamelCase
+                     . unpack
+                     . unHaskellName 
+                     . entityHaskell 
+                     . entityDef
 
       -- | The plural form of the object. By default an `s' is
       -- appended to the singular form.
@@ -131,36 +136,36 @@ Haskell function.
 
 -}
 
-class (Monad m, PersistBackend b m)
+class (Monad m, PersistStore b m)
       => InlineDisplay b m a where
       inlineDisplay :: a -> b m Text
 
 -- We now declare InlineDisplay instance for all the standard persist
 -- values.
 
-instance (Monad m, PersistBackend b m) => InlineDisplay b m Text where
+instance (Monad m, PersistStore b m) => InlineDisplay b m Text where
          inlineDisplay = return
 
-instance (Monad m, PersistBackend b m) => InlineDisplay b m String where
+instance (Monad m, PersistStore b m) => InlineDisplay b m String where
          inlineDisplay = return . pack
 
-instance (Monad m, PersistBackend b m) =>
+instance (Monad m, PersistStore b m) =>
          InlineDisplay b m ByteString where
          inlineDisplay = return . pack . show
 
-instance (Monad m, PersistBackend b m) => InlineDisplay b m Day where
+instance (Monad m, PersistStore b m) => InlineDisplay b m Day where
          inlineDisplay = return 
                        . pack
                        . formatTime defaultTimeLocale "%d %b, %Y" 
 
-instance (Monad m, PersistBackend b m) => InlineDisplay b m UTCTime where
+instance (Monad m, PersistStore b m) => InlineDisplay b m UTCTime where
          inlineDisplay = return
                        . pack
                        . formatTime defaultTimeLocale "%d %b, %Y %T %Z"
 
 
 instance ( Monad m
-         , PersistBackend b m
+         , PersistStore b m
          , InlineDisplay b m v
          , PersistEntity v
          ) => InlineDisplay b m (Key b v) where
@@ -169,14 +174,14 @@ instance ( Monad m
 
 
 instance ( Monad m
-         , PersistBackend b m
+         , PersistStore b m
          , InlineDisplay b m v
          )
          => InlineDisplay b m (Maybe v) where
          inlineDisplay mv = maybe (return "") inlineDisplay mv
 
 instance ( Monad m
-         , PersistBackend b m
+         , PersistStore b m
          , Show a
          )
          => InlineDisplay b m a where
@@ -191,7 +196,7 @@ instance ( Monad m
 -- haskell function.
 
 class ( Monad m
-      , PersistBackend b m
+      , PersistStore b m
       , Administrable v
       )
       => AttributeDisplay b m v where
@@ -308,13 +313,11 @@ class ( YesodPersist master
       , HasAdminUser master
       , HasAdminLayout master
       , Administrable v
-      , PersistBackend (YesodPersistBackend master)
-                       (GGHandler (Admin master v) master IO)
       , InlineDisplay  (YesodPersistBackend master)
-                       (GGHandler (Admin master v) master IO)
+                       (GHandler (Admin master v) master)
                        v
       , AttributeDisplay (YesodPersistBackend master)
-                         (GGHandler (Admin master v) master IO)
+                         (GHandler (Admin master v) master)
                          v 
       ) => YesodAdmin master v where
 
