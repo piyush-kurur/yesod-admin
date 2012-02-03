@@ -17,8 +17,18 @@ would be using this via the template haskell code available inside the
 module "Yesod.Admin.TH". However, in case you are a developer or want
 to do something non-standard, this is the module to refer to.
 
-The admin interfaces of an object is controlled by four classes
-defined here.
+The master site on which we want an admin interfaces should be an
+instance of
+
+* `YesodPersist` for otherwise what will we administer
+
+* `HasAdminUser` so that we can define proper access control and
+
+* `HasAdminLayout` so that we can change the look and feel of the admin site.
+
+Any persistent entity that we want to administer should be an instance
+of the following classes.
+
 
 * The class 'Administrable'. This class is used to define things like
   name of the object the attributes in listings of the object etc.
@@ -29,17 +39,14 @@ defined here.
 * The class 'AttributeDisplay'. This class controls what is shown in
   the listing of a particular object.
 
-* The class 'YesodAdmin'. This class defines access control and forms
-  for the object.
-
-Master sites need to be instances of 'YesodAuth' and also need to
-specify who have administrative previledges to the site. This is done
-via the class 'HasAdminUser'
-
-The last class that is defined here is the 'HasAdminLayout'. This can
-be used to control the rendering of the admin site. If you want to
-change the appearence of the site, change the branding this is what
-you configure.
+Finally what admin operations are possible for an entity on a
+particular site depends on the persistent backend of that site. For
+basic CRUD operations one needs the persistent backend to be an
+instance of `PersistStore`. If this is satisfied one can define an
+instance for the class `YesodAdminCrud` for that site entity pair. If
+in addition the backend supports selection, one can define mass
+actions like mass deletion from a selection list. In such a case the
+site entity pair has to be an instance of `YesodAdminMassAction`.
 
 -}
 module Yesod.Admin.Class
@@ -48,7 +55,6 @@ module Yesod.Admin.Class
        , AttributeDisplay(..)
        , HasAdminUser (..)
        , HasAdminLayout (..)
-       , YesodAdmin(..)
        ) where
 
 import Data.ByteString (ByteString)
@@ -59,36 +65,41 @@ import Database.Persist.EntityDef
 import Yesod
 import Yesod.Auth
 import Yesod.Admin.Helpers
-import Yesod.Admin.Subsite
 import Yesod.Admin.Types
-import Yesod.Admin.Render
 import Yesod.Admin.Render.Defaults
 import Text.Hamlet
 
-{-| 
+{-|
 
-    This class captures objects that have an admin interface.  The key
-member is the associated type @'Attribute'@. An attribute in the
-listing of an object can either be a database column of an object or
+    This class captures objects that have an admin interface. The most
+important member of this class is the associated data type of this
+class are @'Attribute'@.  Minimum complete definition of this class
+requires defining the associated type @'Attribute' v@ and the
+functions @'attributeTitle'@.
+
+An attribute an object can either be a database column of an object or
 might be a constructed entity. Each attribute in the listing has a
 title. The member function @'attributeTitle'@ maps an attribute of a
-data type @`v`@ (of type @'Attribute' v@) to its title. Minimum
-complete definition of this class requires defining the associated
-type @'Attribute' v@ and the function @'AttributeTitle'@.
+data type @`v`@ (of type @'Attribute' v@) to its title.
 
 -}
 
-class PersistEntity v => Administrable v where
+class ( Eq (Attribute v)
+      , Enum (Attribute v)
+      , Bounded (Attribute v)
+      , PersistEntity v
+      )
+       => Administrable v where
 
       -- | The name of the object. Used in various places for example
       -- in titles of admin pages. The default values is the entity
       -- name of the given persistent type.
       objectSingular :: v -> Text
-      objectSingular = pack 
+      objectSingular = pack
                      . unCamelCase
                      . unpack
-                     . unHaskellName 
-                     . entityHaskell 
+                     . unHaskellName
+                     . entityHaskell
                      . entityDef
 
       -- | The plural form of the object. By default an `s' is
@@ -97,19 +108,26 @@ class PersistEntity v => Administrable v where
       objectPlural  v = objectSingular v `append` "s"
 
       -- | Abstract attributes of the type. These attributes can
-      -- appear in listings and access control.  Besides the usual
+      -- appear in listings and access control. Besides the usual
       -- database columns, they can be constructed ones as well.
-      data Attribute v     :: *
+      data Attribute v :: *
 
       -- | The title of the given attribute.
       attributeTitle :: Attribute v -> Text
+
       
-      -- | In listing of the object what all attributes should be
-      -- listed.  This can be empty in which case the inline display
-      -- of the object is used.
-      listAttributes :: [Attribute v]
-      listAttributes = []
-      
+      -- | The database attributes of the object.
+      dbAttributes :: [Attribute v]
+      -- | In the selection page of the object what all attributes
+      -- should be listed. This can be empty in which case the inline
+      -- display of the object is used.
+      selectionPageAttributes :: [Attribute v]
+      selectionPageAttributes = []
+
+      -- | In the read page of an object what attributes should be shown.
+      readPageAttributes :: [Attribute v]
+      readPageAttributes = dbAttributes
+
       -- | Controls in which order the objects are listed. By default
       -- no sorting is done, i.e. it is governed by the database
       -- backend.
@@ -154,9 +172,9 @@ instance (Monad m, PersistStore b m) =>
          inlineDisplay = return . pack . show
 
 instance (Monad m, PersistStore b m) => InlineDisplay b m Day where
-         inlineDisplay = return 
+         inlineDisplay = return
                        . pack
-                       . formatTime defaultTimeLocale "%d %b, %Y" 
+                       . formatTime defaultTimeLocale "%d %b, %Y"
 
 instance (Monad m, PersistStore b m) => InlineDisplay b m UTCTime where
          inlineDisplay = return
@@ -254,7 +272,7 @@ class Yesod master => HasAdminLayout master where
       branding   :: GWidget sub master ()
       branding   = do setTitle "Yesod Admin"
                       addHtml [shamlet|Yesod Admin|]
-      
+
       -- | Sets up the styles to use on admin pages. While you can
       -- have arbitray widget code here, it is better to add only the
       -- style related stuff here. This way you can change the style
@@ -262,7 +280,7 @@ class Yesod master => HasAdminLayout master where
 
       adminStyles :: GWidget sub master ()
       adminStyles = defaultAdminStyles
-      
+
       -- | The layout of the admin site. This is where you do the
       -- final tweaks to the widget before you send it out to the
       -- world. The purpose of this is similar to that of
@@ -277,97 +295,77 @@ class Yesod master => HasAdminLayout master where
                                                         <div .content>^{content}
                                                     |]
 
-      -- | Controls how to render an admin listing.
-      listingToContents :: Listing master -> GWidget sub master ()
-      listingToContents = defaultListing
-{-|
-
-This class captures the admin interface of the object @v@ on the site
-@master@. Don't be scared of the context declaration; the master site
-needs
-    
-    * Database access and hence YesodPersist
-
-    * Needs a way to check for users with administrative permissions
-      and hence HasAdminUser
-
-    * Needs a way to layout admin pages and hence HasAdminLayout
-
-The object @v@ needs an:
-    
-    * An admininstrative interfaces,
-
-    * A way of inline display with the database backend matching that of 
-      the master site and
-    
-    * A way of displaying attributes of the object.
-
-The member function of this class specify the access control and
-relevant forms. Often, the default settings is all that is needed; all
-operations are allowed for super user(s) and no one else. However,
-feel free to configure the appropriate access control combinator.
-
--}
-
+-- | The class defines the access control to crud operations.
 class ( YesodPersist master
       , HasAdminUser master
-      , HasAdminLayout master
       , Administrable v
-      , InlineDisplay  (YesodPersistBackend master)
-                       (GHandler (Admin master v) master)
-                       v
-      , AttributeDisplay (YesodPersistBackend master)
-                         (GHandler (Admin master v) master)
-                         v 
-      ) => YesodAdmin master v where
-
-      -- | This filter controls what objects are displayed to a given
-      -- user. Beware that restricting this filter is not a substitute
-      -- to proper access control. You need to also set the `canRead`
-      -- and/or `canReadAttribute` appropriately. Otherwise if a user
-      -- guess the id of an object, it will be displayed. This filter
-      -- is to weed out undisplayable objects from listings.
-      listFilter :: AuthId master -> master -> [Filter v]
-      listFilter _ _ = []
+      ) => CrudControl master v where
 
       -- | This controls whether a user is allowed to create a
       -- particular object. The default setting only allows the super
       -- user to create.
-      canCreate  :: AuthId master -- ^ The user
+      canCreate  :: Monad (YesodDB sub master)
+                 => AuthId master -- ^ The user
                  -> v             -- ^ The object to create
-                 -> AdminDB master v Bool
+                 -> YesodDB sub master Bool
       canCreate authId _ = isSuperUser authId
 
-      -- | Controls whether a user can replace a given object with a
-      -- new object. By default only the super user is allowed.
-      canReplace :: AuthId master -- ^ The user
-                 -> AdminKVPair master v -- ^ existing object
-                 -> v                    -- ^ the new object
-                 -> AdminDB master v Bool
-      canReplace authId _ _ = isSuperUser authId
-
-      -- | Controls whether a particular user is allowed to delete an
-      -- object. By default only the super user is allowed.
-      canDelete  :: AuthId master
-                 -> AdminKVPair master v
-                 -> AdminDB master v Bool
-      canDelete authId _ = isSuperUser authId
-
-      -- | Controls whether a particular user is allowed to read an
-      -- object. By default only the super user is allowed. To avoid
-      -- the unreadable objects from being listed, ensure that the
-      -- `listFilter` weeds them out.
-      canRead :: AuthId master
-              -> AdminKVPair master v
-              -> AdminDB master v Bool
+      -- | Controls whether a particular user can read a given
+      -- object.
+      canRead :: Monad (YesodDB sub master)
+              => AuthId master
+              -> SiteKey master v
+              -> YesodDB sub master Bool
       canRead authId _ = isSuperUser authId
 
-      -- | Controls whether a particular user is allowed to read a
-      -- particular attribute of the object. Notice that to read a
-      -- attribute, one needs the read permission any way. By default
-      -- only the super user is allowed.
-      canReadAttribute  :: AuthId master
-                        -> AdminKVPair master v
-                        -> Attribute v     -- ^ Given attribute
-                        -> AdminDB master v Bool
-      canReadAttribute authId _ _ = isSuperUser authId
+      -- | The attributes that can be read.
+      readableAttributes :: Monad (YesodDB sub master)
+                         => AuthId master
+                         -> YesodDB sub master [Attribute v]
+      readableAttributes authId = do issup <- isSuperUser authId
+                                     if issup then return [minBound..maxBound]
+                                        else return []
+      -- | Controls whether a particular user is allowed to delete an
+      -- object. By default only the super user is allowed.
+      canDelete  :: Monad (YesodDB sub master)
+                 => AuthId master
+                 -> SiteKVPair master v
+                 -> YesodDB sub master Bool
+      canDelete authId _ = isSuperUser authId
+
+      -- | Controls whether a user can replace a given object with a
+      -- new object. By default a user can replace an existing one if
+      -- she can delete the current value and insert the new one.
+      canReplace :: Monad (YesodDB sub master)
+                 => AuthId master -- ^ The user
+                 -> SiteKVPair master v -- ^ existing object
+                 -> v                   -- ^ the new object
+                 -> YesodDB sub master Bool
+      canReplace authId kv v = do delPerm    <- canDelete authId kv
+                                  createPerm <- canCreate authId v
+                                  return (delPerm && createPerm)
+
+-- | The class defines the access control to Selection operations. The
+-- access controls are defined using filters and are these control the
+-- selection page of the entity. Recall that selection page is
+-- supported only for sites whose persistent backend is an instance of
+-- PersistQuery.
+
+class ( YesodPersist master
+      , HasAdminUser master
+      , Administrable v
+      ) => SelectionControl master v where
+
+      readFilter :: Monad (YesodDB sub master)
+                 => AuthId master
+                 -> YesodDB sub master (Filter v)
+      readFilter authId = do issup <- isSuperUser authId
+                             if issup then return $ FilterAnd []
+                                else return $ FilterOr []
+
+      deleteFilter :: Monad (YesodDB sub master)
+                   => AuthId master
+                   -> YesodDB sub master (Filter v)
+      deleteFilter authId = do issup <- isSuperUser authId
+                               if issup then return $ FilterAnd []
+                                  else return $ FilterOr []
