@@ -16,9 +16,9 @@ import Yesod.Admin.Types
 getAdminUpdateR :: ( Yesod master
                    , YesodPersist master
                    , b ~ YesodPersistBackend master
-                   , SinglePiece (Key b v)
+                   , PathPiece (Key b v)
                    )
                  => Key b v  -- ^ The
                  -> AdminHandler master v RepHtml
 getAdminUpdateR k = defaultLayout $ do
-         addHamlet [hamlet|Should display object of Id #{toSinglePiece k}|]
+         addHamlet [hamlet|Should display object of Id #{toPathPiece k}|]
