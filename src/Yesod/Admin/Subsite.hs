@@ -5,93 +5,67 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-|
 
-This defines the admin subsite data type. 
+This module defines the admin subsite data type. We distinguish
+between two classes of admin subsites.
+
+  1. Basic crud operations: This is supported as long as the persist
+     backend of the master site is an instance of PersistStore. The
+     datatype `Crud` captures this subsite.
+
+  2. Selection: This is supported in addition to the basic crud
+     operations if the persist backend of the master site is an
+     instance of PersistQuery as well. The datatype Selection captures
+     this subsite.
 
 -}
 module Yesod.Admin.Subsite
-       ( Admin
+       ( Crud
+       , getCrud
+       , Selection
+       , getSelection
        -- * Routes
        -- $routes
-       , getAdmin
        ) where
 
 import Yesod
 
--- | The foundation type for admin subsite of type v on the site
--- master.
+-- | The subsite that provides the crud interface.
 
-data Admin master v = Admin
+data Crud master v = Crud
 
--- | Get a default instance here.
-
-getAdmin :: Admin master v
-getAdmin = Admin
-
-{- Developer's notes.
-
-The route that we want for an admin interfaces is the following
-
-/         list all objects of type v
-/page/#Int                 Show the nth page.
-/create                    C - creation
-/read/#(Key b v)           R - read the associate object
-/update/#(Key b v)         U - Update the associate object
-/delete/#(Key b v)         D - Delete the associate object
-
-Unfortunately the current subsite generation TH code does not support
-these generic routes hence we have to code these by hand.
-
--}
-
-{- $routes
-
-For any site/subsite @a@, the routes of the site is captured by the
-associated data type @'Route' a@. The constructors of this associated
-type is what you use in your templates. 
-There are two ways to perform the lift. Consider the first situation
-where you want to link to the admin pages of the Person entity.
-Let the admin route be as follows.
-
-> /admin/person/ PersonAdminR PersonAdmin getPersonAdmin
-
-where @PersonAdmin@ is a type alias @'Admin' Site Person@ and
-getPersonAdmin is the specialised form of @`getAdmin`@. Then the
-constructor @PersonAdminR@ can be used to lift the
-route. I.e. @PersonAdminR `AdminListR`@ is the route to the listing of
-@Persons@, @PersonAdminR $ `AdminReadR` id@ is the route to view the
-person with database id @id@ etc.  
-
-
-In certain cases the route where the admin is hooked is not known.
-For example all the code in this library does not know how the
-individual admin sites are hooked. Use the combinator
-@"Yesod.Admin.Handlers".'toMasterRoute'@ in such a case.
-
--}
-
--- | The routes in the admin site.
+getCrud :: Crud master v
+getCrud = Crud
 
 instance ( YesodPersist master
          , PathPiece (Key (YesodPersistBackend master) v)
-         ) 
-         => RenderRoute (Admin master v) where
-         data Route (Admin master v)
-                       = AdminListR        --
-                       | AdminPageR  Int   -- the nth page of listing
-                       | AdminCreateR      -- create an object
-                       | AdminReadR   (Key (YesodPersistBackend master) v)
-                                           -- ^ view an object
-                       | AdminUpdateR (Key (YesodPersistBackend master) v)
-                                           -- ^ update an objects
-                       | AdminDeleteR (Key (YesodPersistBackend master) v)
-                                           -- ^ delete an object
+         ) => RenderRoute (Crud master v) where
+
+         -- | The routes for crud operations.
+         data Route (Crud master v)
+                       = CreateR      -- create an object
+                       | ReadR   (Key (YesodPersistBackend master) v)
+                                      -- ^ view an object
+                       | UpdateR (Key (YesodPersistBackend master) v)
+                                      -- ^ update an objects
+                       | DeleteR (Key (YesodPersistBackend master) v)
+                                      -- ^ delete an object
                        deriving (Eq, Show, Read)
          
-         renderRoute AdminListR       = ([],[])
-         renderRoute (AdminPageR  p)  = (["page", toPathPiece p], [])
-         renderRoute AdminCreateR     = (["create"],[])
-         renderRoute (AdminReadR   k) = (["read",   toPathPiece k],[])
-         renderRoute (AdminUpdateR k) = (["update", toPathPiece k],[])
-         renderRoute (AdminDeleteR k) = (["delete", toPathPiece k],[])
-         
+         renderRoute CreateR     = (["create"],[])
+         renderRoute (ReadR   k) = (["read",   toPathPiece k],[])
+         renderRoute (UpdateR k) = (["update", toPathPiece k],[])
+         renderRoute (DeleteR k) = (["delete", toPathPiece k],[])
 
+-- | The subsite for selection objects.
+
+data Selection master v = Selection
+getSelection :: Selection master v
+getSelection = Selection
+
+instance RenderRoute (Selection master v) where
+         -- | The routes for listing objects
+         data Route (Selection master v) = ListR
+                                         | PageR Int deriving Eq
+
+         renderRoute ListR     = (["list"],[])
+         renderRoute (PageR p) = (["page", toPathPiece p],[])
