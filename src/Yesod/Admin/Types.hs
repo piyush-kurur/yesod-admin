@@ -5,33 +5,22 @@ This modules defines some type convenient type aliases
 -}
 
 module Yesod.Admin.Types
-       ( AdminHandler
-       , AdminId
-       , AdminKVPair
-       , AdminDB
-       , AdminWidget
+       ( SiteKey
+       , SiteKVPair
+       , CrudDB
        ) where
 
 import Yesod
 import Yesod.Admin.Subsite
 
-
--- | An alias for admin site handler.
-
-type AdminHandler master v = GHandler (Admin master v) master
-
--- | An alias for widgets of admin sites.
-
-type AdminWidget master v = GWidget (Admin master v) master
-
 {-|
 
-We assume that the master site is an instance of YesodPersist. This
-is an alias for the database key to access element of type v.
+We assume that the master site is an instance of YesodPersist. This is
+an alias for the database key to access element of type v.
 
 -}
 
-type AdminId master v = Key (YesodPersistBackend master) v
+type SiteKey master v = Key (YesodPersistBackend master) v
 
 {-|
 
@@ -41,8 +30,8 @@ type defined.
 
 -}
 
-type AdminKVPair master v = (AdminId master v, v)
+type SiteKVPair master v = (SiteKey master v, v)
 
 -- | Database action of a admin site
 
-type AdminDB master v = YesodDB (Admin master v) master
+type CrudDB master v = YesodDB (Crud master v) master

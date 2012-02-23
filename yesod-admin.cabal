@@ -21,25 +21,25 @@ Library
   GHC-Options: -Wall
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Class
-                 , Yesod.Admin.Render
                  , Yesod.Admin.Subsite
                  , Yesod.Admin.Types
-                 , Yesod.Admin.Handlers
-                 , Yesod.Admin.Render.Defaults
-                 , Yesod.Admin.TH
-                 , Yesod.Admin.TH.Entity
-                 , Yesod.Admin.TH.Site
-  Other-modules: Yesod.Admin.Helpers
-               , Yesod.Admin.TH.Helpers
-               , Yesod.Admin.Handlers.Helpers
-               , Yesod.Admin.Handlers.Internal
-               , Yesod.Admin.Handlers.Internal.AdminListR
-               , Yesod.Admin.Handlers.Internal.AdminPageR
-               , Yesod.Admin.Handlers.Internal.AdminCreateR
-               , Yesod.Admin.Handlers.Internal.AdminReadR
-               , Yesod.Admin.Handlers.Internal.AdminUpdateR
-               , Yesod.Admin.Handlers.Internal.AdminDeleteR
-               , Yesod.Admin.Dispatch
+--                 , Yesod.Admin.Render
+--                 , Yesod.Admin.Render.Defaults
+--                 , Yesod.Admin.Handlers
+--                 , Yesod.Admin.TH
+--                 , Yesod.Admin.TH.Entity
+--                 , Yesod.Admin.TH.Site
+--  Other-modules: Yesod.Admin.Helpers
+--               , Yesod.Admin.TH.Helpers
+--               , Yesod.Admin.Handlers.Helpers
+--             , Yesod.Admin.Handlers.Internal
+--             , Yesod.Admin.Handlers.Internal.AdminListR
+--             , Yesod.Admin.Handlers.Internal.AdminPageR
+--             , Yesod.Admin.Handlers.Internal.AdminCreateR
+--             , Yesod.Admin.Handlers.Internal.AdminReadR
+--             , Yesod.Admin.Handlers.Internal.AdminUpdateR
+--             , Yesod.Admin.Handlers.Internal.AdminDeleteR
+--             , Yesod.Admin.Dispatch
   Build-depends: base
                , time
                , old-locale
@@ -51,4 +51,4 @@ Library
                , yesod-auth >=0.8 && <0.9
                , shakespeare-css >=0.10 && <0.11
                , hamlet >=0.10 && <0.11
-               , persistent >=0.7 && <0.8
+               , persistent >=0.8 && <0.9

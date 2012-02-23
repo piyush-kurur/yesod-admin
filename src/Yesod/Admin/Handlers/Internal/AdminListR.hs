@@ -18,6 +18,7 @@ import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 
 
+
 getAdminListR :: ( Yesod master
                  , YesodAdmin master v
                  , YesodPersist master

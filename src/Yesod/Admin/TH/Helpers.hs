@@ -9,22 +9,26 @@ module Yesod.Admin.TH.Helpers
        ( undefinedObjectOf
        , typeName
        , fieldName
-       , entityColumn
+
        , mkInstance
        , persistType
-       , persistBackendP
+       , persistStoreP
        , monadP
        , entityAdmin
        , getEntityAdmin
        ) where
 
-import Database.Persist
-import Database.Persist.Base
-import Yesod.Admin.Helpers
 import Language.Haskell.TH
+import Data.Text(unpack)
+import Database.Persist.EntityDef
+import Yesod
+import Yesod.Admin.Helpers
+
+entityName :: PersistEntity v => v -> String
+entityName = unpack . unHaskellName . entityHaskell . entityDef
 
 -- | Get an object associated with the given entity. The object
--- generated is undefined but usefull for type kludges.
+-- generated is undefined but useful for type kludges.
 
 undefinedObjectOf :: PersistEntity v
                   => EntityField v typ
@@ -35,7 +39,7 @@ undefinedObjectOf _ = undefined
 typeName :: PersistEntity v
          => v
          -> String
-typeName = entityName . entityDef 
+typeName = entityName  
 
 -- | Get the field name associated with an  EnitityField
 fieldName :: PersistEntity v
@@ -45,12 +49,12 @@ fieldName :: PersistEntity v
 fieldName v fname = camelCase $ unwords [ unCapitalise $ typeName v
                                         , fname
                                         ]
-
+{-
 entityColumn :: PersistEntity v
              => EntityField v typ
              -> String
 entityColumn = columnName . persistColumnDef 
-
+-}
 
 -- | Create an instance declaration.
 mkInstance :: [PredQ] -> Name -> [TypeQ] -> [DecQ] -> DecQ
@@ -59,8 +63,8 @@ mkInstance context cls args defs = instanceD (cxt context) inst defs
 
 
 -- ^ Generates PersistBackend constraint.
-persistBackendP :: TypeQ -> TypeQ -> PredQ
-persistBackendP b m = classP ''PersistBackend [b,m]
+persistStoreP :: TypeQ -> TypeQ -> PredQ
+persistStoreP b m = classP ''PersistStore [b,m]
 
 -- ^ Generate Monad constraint.
 monadP :: TypeQ -> PredQ
@@ -70,7 +74,7 @@ monadP m = classP ''Monad [m]
 persistType :: PersistEntity v
             => v
             -> TypeQ
-persistType = conT . mkName . entityName . entityDef
+persistType = conT . mkName . entityName
       
 -- | Generates the entities type alias name
 entityAdmin :: String -- ^ the persistent entity

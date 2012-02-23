@@ -65,7 +65,6 @@ import Data.List
 import Data.Maybe
 import Language.Haskell.TH
 import Database.Persist
-import Database.Persist.Base
 import Yesod.Admin.Helpers
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
