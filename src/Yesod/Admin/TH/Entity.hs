@@ -5,49 +5,24 @@
 
 {-|
 
-Template haskell functions to generate admin related declarations for
-persistent entities. Here is an example of how to use the functions
-here. Assume a persistent entry of the following kind.
-
->      [persist|
->                Person
->                        name    Text
->                        email   Text
->                        age     Text
->                        address Text
->     |]
-
-You can define the admin interfaces by the following code
-
-
->
-> mkYesodAdmin (simpleAdmin "nameAndEmail" :: AdminInterface Person)
-> nameAndEmail person = return $ Text.concat [ personName person
->                                            , "<", personEmail person, ">"
->                                            ]
-
-The above code will generate an admin instance where the function
-@nameAndEmail@ is used to display the objects in inline mode. Further
-the listings of Person will have one field with title Person and
-entries obtained by applying nameAndEmail. For more elaborate
-configuration check the 'AdminInterface' datatype.
+Module to generate admin code for persistent entries.
 
 -}
 
 module Yesod.Admin.TH.Entity
        ( 
-       -- * Displaying objects.
-       -- $display
+       -- * Admin section.
+       -- $adminsection
 
-       -- * Attribute titles.
-       -- $attributetitle
+       -- * Attribute naming and title.
+       -- $attributeNameAndTitle
 
        -- * Attribute constructors.
        -- $attributeconstructors
 
        -- * Helper functions.
        -- $helpers
-       
+{-       
          AdminInterface(..)
        , simpleAdmin
        , mkYesodAdmin
@@ -58,10 +33,12 @@ module Yesod.Admin.TH.Entity
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveAttributeDisplay
+-}
        ) where
 
 import Data.Char
 import Data.List
+import qualified Data.Text as T
 import Data.Maybe
 import Language.Haskell.TH
 import Database.Persist
@@ -70,35 +47,74 @@ import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
 import Yesod.Admin.Subsite
 
+type Text = T.Text
+pack = T.pack
+unpack = T.unpack
 
--- $display
+-- $adminsection
+-- To define the admin interface for a persistent objects one needs to
+-- define and admin section in the persistent object definition For
+-- example look at the definition of person in the following code.
 --
--- In an admin site the object is either displayed in inline text or
--- in listings. The field 'inline' of the 'AdminInterface' datatype
--- controls the inline display of the objects where as 'listing'
--- controls what attributes are shown and in which order.  Both 'inline'
--- or an element of 'listing' can be either:
+-- >      [persist|
+-- >                Person
+-- >                        name    Text
+-- >                        email   Text
+-- >                        age     Text
+-- >                        address Text
+-- >                        Admin
+-- >                            inline nameAndEmail
+-- >                            list   Name Email Age
+-- >                            title Name Full Name
+-- >     |]
 --
---   1. A string that starts with an upper case letter e.g. @\"Name\"@
---   in which case it denotes a database column or
+-- In the above code snippet, we have defined the /fields/ @inline@,
+-- @list@ and @title@.
 --
---   2. A string that starts with a lower case letter
---   e.g. @\"nameAndEmail\"@ in which case it denotes a function which
---   when applied to the objects returns the displayed string.  Note
---   that the function should have type 
+-- The allowed fields are:
 --
--- @('PersistEntity' v, 'PersistBackend' b m) => v -> b m 'Text'@
+-- [@inline@] Attribute used in the inline display of the object. Should
+--    occur only once in the admin section. There should be a single
+--    parameter which is the name of the attribute (See the convention on
+--    attribute naming)
 --
+-- [@list@] A list of attributes used in the selection list display of
+--    the objects. Should occur only once in the admin section. The
+--    parameter is the list of attribute and the ordering of the
+--    attribute should be as required in the selection listing.
 --
+-- [@plural@] The plural name for the object.
+--
+-- [@singular@] The singular name for the object.
+--
+-- [@title@] Used to override the default title of an attribute. The
+--    first attribute is the attribute name and the rest of paramenters
+--    form the title. There can be multiple title definitions one for
+--    each attribute.
 
 
--- $attributetitle
+-- $attributeNameAndTitle
+-- Attributes can be either
+--
+--   1. A string that starts with an lower case letter e.g. @name@
+--   in which case it is one of the fields of the Persistent entity.
+--
+--   2. A string that starts with a upper case letter
+--   e.g. @NameAndEmail@ in which case it denotes a function which
+--   when applied to the objects returns the displayed string. The
+--   function name is obtained by converting the first character of
+--   the name into lower case (i.e @fooBar@ for an attribute @FooBar@).
+--   The type of the function should be.
+--
+--   @('PersistEntity' v, 'PersistStore' b m) => v -> b m 'Text'@
+--
 --
 -- The default attribute title for a attribute fooBarBiz is @\"Foo bar
--- biz\"@. I.e it is the uncamelcased version of the attribute name.
--- You can override the title by changing the 'attributeTitleOverride'
--- field of the 'AdminInterface'.
---
+-- biz\"@. I.e it is the uncamelcased version of the attribute name.  You
+-- can override setting the title field in the Admin section of the
+-- object.
+
+
 
 
 -- $attributeconstructors
@@ -138,30 +154,31 @@ in your main routes file.
 
 -}
 
-
 -- | This datatype controls the admin site generate via the template
 -- haskell functions of this module. Having defined this type you can
 -- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want to
 -- tweak the access controls).
 
-data AdminInterface v
-     = AdminInterface { singular :: String  -- ^ The singular name
-                      , plural   :: String  -- ^ The plural form
-                      , attributeTitleOverride :: [(String, String)]
-                             -- ^ List of tuples (c,t) where c is a
-                             -- attribute and t is its title. You need
-                             -- to specify only those attributes whose
-                             -- default title you are not happy with
-                      , inline   :: String
-                             -- ^ How to display the inline display of
-                             -- the object. It could either be a
-                             -- database column (a capitalised name)
-                             -- or a constructed (a name that starts
-                             -- with lower case).
-                      , listing  :: [ String ]
-                             -- ^ Ordered list of attributes in the
-                             -- listing of the object.
-                      }
+data AdminSection
+     = AdminSection { singular :: Text  -- ^ The singular name
+                    , plural   :: Text  -- ^ The plural form
+                    , attributeTitleOverride :: [(Text, Text)]
+                       -- ^ List of tuples (c,t) where c is a
+                       -- attribute and t is its title. You need to
+                       -- specify only those attributes whose default
+                       -- title you are not happy with
+                    , inline   :: Text
+                       -- ^ How to display the inline display of the
+                       -- object. It could either be a database column
+                       -- (a capitalised name) or a constructed (a
+                       -- name that starts with lower case).
+                    , list     :: [Text]
+                       -- ^ Ordered list of attributes in the
+                       -- selection listing of the object.
+                    }
+
+
+{-
 
 -- | Generate a simple admin interface. The argument follows the same
 -- convention as that of an administrative attribute. It can either be
@@ -413,3 +430,5 @@ displayRHS v at | isDBAttribute at
                                  = let fname = varE $ mkName $ fieldName v at
                                        in [| inlineDisplay . $fname |]
                 | otherwise      = varE $ mkName at
+
+-}
