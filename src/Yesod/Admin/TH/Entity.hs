@@ -177,6 +177,15 @@ data AdminSection
                        -- selection listing of the object.
                     }
 
+textFun :: Name -> Text -> DecQ
+textFun name t = funD name [rhs []]
+               where rhs = clause [wildP] $ normalB $ textL t
+
+defObjectSingular :: AdminSection -> DecQ
+defObjectPlural   :: AdminSection -> DecQ
+
+defObjectSingular = textFun 'objectSingular . singular
+defObjectPlural   = textFun 'objectPlural   . plural
 
 {-
 
