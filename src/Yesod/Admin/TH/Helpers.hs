@@ -16,10 +16,11 @@ module Yesod.Admin.TH.Helpers
        , monadP
        , entityAdmin
        , getEntityAdmin
+       , textL
        ) where
 
 import Language.Haskell.TH
-import Data.Text(unpack)
+import Data.Text( Text, unpack)
 import Database.Persist.EntityDef
 import Yesod
 import Yesod.Admin.Helpers
@@ -39,7 +40,7 @@ undefinedObjectOf _ = undefined
 typeName :: PersistEntity v
          => v
          -> String
-typeName = entityName  
+typeName = entityName
 
 -- | Get the field name associated with an  EnitityField
 fieldName :: PersistEntity v
@@ -53,7 +54,7 @@ fieldName v fname = camelCase $ unwords [ unCapitalise $ typeName v
 entityColumn :: PersistEntity v
              => EntityField v typ
              -> String
-entityColumn = columnName . persistColumnDef 
+entityColumn = columnName . persistColumnDef
 -}
 
 -- | Create an instance declaration.
@@ -62,7 +63,7 @@ mkInstance context cls args defs = instanceD (cxt context) inst defs
      where inst = foldl appT (conT cls) args
 
 
--- ^ Generates PersistBackend constraint.
+-- ^ Generates PersistStore constraint.
 persistStoreP :: TypeQ -> TypeQ -> PredQ
 persistStoreP b m = classP ''PersistStore [b,m]
 
@@ -74,9 +75,10 @@ monadP m = classP ''Monad [m]
 persistType :: PersistEntity v
             => v
             -> TypeQ
-persistType = conT . mkName . entityName
-      
+persistType v = conT . mkName $ entityName v ++ "Generic"
+
 -- | Generates the entities type alias name
+
 entityAdmin :: String -- ^ the persistent entity
             -> String
 entityAdmin entity = entity ++ "Admin"
@@ -84,3 +86,6 @@ entityAdmin entity = entity ++ "Admin"
 getEntityAdmin :: String  -- ^ the persistent entity
                -> String
 getEntityAdmin entity = "get" ++ entity ++ "Admin"
+
+textL t = sigE strL $ conT ''Text
+     where strL = litE $ stringL (unpack t)
