@@ -23,15 +23,16 @@ Library
                  , Yesod.Admin.Class
                  , Yesod.Admin.Subsite
                  , Yesod.Admin.Types
---                 , Yesod.Admin.Render
---                 , Yesod.Admin.Render.Defaults
---                 , Yesod.Admin.Handlers
---                 , Yesod.Admin.TH
---                 , Yesod.Admin.TH.Entity
---                 , Yesod.Admin.TH.Site
---  Other-modules: Yesod.Admin.Helpers
---               , Yesod.Admin.TH.Helpers
---               , Yesod.Admin.Handlers.Helpers
+                 , Yesod.Admin.TH
+                 , Yesod.Admin.TH.Entity
+   --                 , Yesod.Admin.TH.Site
+   --                 , Yesod.Admin.Render
+   --                 , Yesod.Admin.Render.Defaults
+   --                 , Yesod.Admin.Handlers
+  
+  Other-modules: Yesod.Admin.Helpers
+                , Yesod.Admin.TH.Helpers
+--                , Yesod.Admin.Handlers.Helpers
 --             , Yesod.Admin.Handlers.Internal
 --             , Yesod.Admin.Handlers.Internal.AdminListR
 --             , Yesod.Admin.Handlers.Internal.AdminPageR
