@@ -64,13 +64,13 @@ module Yesod.Admin.Class
        ) where
 
 import Data.ByteString (ByteString)
-import Data.Text(Text, append, pack, unpack)
+import Data.Text(Text, append, pack)
 import System.Locale
 import Data.Time
 import Database.Persist.EntityDef
 import Yesod
 import Yesod.Auth
-import Yesod.Admin.Helpers
+import Yesod.Admin.Helpers.Text
 import Yesod.Admin.Types
 import Yesod.Admin.Render.Defaults
 import Text.Hamlet
@@ -105,9 +105,7 @@ class ( Eq (Attribute v)
       -- in titles of admin pages. The default values is the entity
       -- name of the given persistent type.
       objectSingular :: v -> Text
-      objectSingular = pack
-                     . unCamelCase
-                     . unpack
+      objectSingular = unCamelCase
                      . unHaskellName
                      . entityHaskell
                      . entityDef

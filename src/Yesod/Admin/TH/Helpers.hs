@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-|
 
 Some helper functions that are useful for themplate Haskell code generation.
@@ -7,9 +8,7 @@ Some helper functions that are useful for themplate Haskell code generation.
 
 module Yesod.Admin.TH.Helpers
        ( undefinedObjectOf
-       , typeName
        , fieldName
-
        , mkInstance
        , persistType
        , persistStoreP
@@ -23,10 +22,10 @@ import Language.Haskell.TH
 import Data.Text( Text, unpack)
 import Database.Persist.EntityDef
 import Yesod
-import Yesod.Admin.Helpers
+import Yesod.Admin.Helpers.Text
 
-entityName :: PersistEntity v => v -> String
-entityName = unpack . unHaskellName . entityHaskell . entityDef
+entityName :: PersistEntity v => v -> Text
+entityName = unHaskellName . entityHaskell . entityDef
 
 -- | Get an object associated with the given entity. The object
 -- generated is undefined but useful for type kludges.
@@ -36,20 +35,21 @@ undefinedObjectOf :: PersistEntity v
                   -> v
 undefinedObjectOf _ = undefined
 
+{-
 -- | Get the type name associated with an object.
 typeName :: PersistEntity v
          => v
          -> String
 typeName = entityName
-
+-}
 -- | Get the field name associated with an  EnitityField
 fieldName :: PersistEntity v
           => v
-          -> String
-          -> String
-fieldName v fname = camelCase $ unwords [ unCapitalise $ typeName v
-                                        , fname
-                                        ]
+          -> Text
+          -> Text
+fieldName v fname = camelCaseUnwords [ unCapitalise $ entityName v
+                                     , fname
+                                     ]
 {-
 entityColumn :: PersistEntity v
              => EntityField v typ
@@ -75,7 +75,9 @@ monadP m = classP ''Monad [m]
 persistType :: PersistEntity v
             => v
             -> TypeQ
-persistType v = conT . mkName $ entityName v ++ "Generic"
+persistType v = conT . mkNameT $ camelCaseUnwords [ entityName v
+                                                  , "Generic"
+                                                  ]
 
 -- | Generates the entities type alias name
 
@@ -87,5 +89,36 @@ getEntityAdmin :: String  -- ^ the persistent entity
                -> String
 getEntityAdmin entity = "get" ++ entity ++ "Admin"
 
+textL :: Text -> ExpQ
 textL t = sigE strL $ conT ''Text
      where strL = litE $ stringL (unpack t)
+
+mkNameT :: Text -> Name
+mkNameT = mkName . unpack
+
+
+defaultCons     :: Text -> Text  -- ^ creates a constructor name from
+                                 -- a sentence.
+defaultFunction :: Text -> Text  -- ^ creates a function name from a
+                                 -- sentence.
+
+defaultCons     = capitalise . camelCase
+defaultFunction = unCapitalise . camelCase
+
+defaultConsE    :: Text -> ExpQ  -- ^ Th version of defaultCons
+defaultConsP    :: Text -> [PatQ] -> PatQ
+                -- ^ TH version but for patterns
+
+defaultConsE   = conE . mkNameT . defaultCons
+defaultConsP t = conP . mkNameT $ defaultCons t
+
+defaultFunctionE :: Text -> ExpQ
+defaultFunctionE = varE . mkNameT . defaultFunction
+
+
+defaultTitle  :: Text -> Text
+defaultTitleE :: Text -> ExpQ
+
+defaultTitle  = capitalise . unCamelCase
+defaultTitleE = textL . defaultTitle
+
