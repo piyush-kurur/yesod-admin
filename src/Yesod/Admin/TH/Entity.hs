@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances            #-}
 {-# LANGUAGE FlexibleContexts             #-}
 {-# LANGUAGE TemplateHaskell              #-}
-
+{-# LANGUAGE OverloadedStrings            #-}
 {-|
 
 Module to generate admin code for persistent entries.
@@ -10,26 +10,26 @@ Module to generate admin code for persistent entries.
 -}
 
 module Yesod.Admin.TH.Entity
-       ( 
+       (
        -- * Admin section.
        -- $adminsection
 
-       -- * Attribute naming and title.
+       -- * Attribute naming
        -- $attributeNameAndTitle
 
-       -- * Attribute constructors.
-       -- $attributeconstructors
+       -- * Attribute title and constructors.
+       -- $attributetitleandconstructors
 
        -- * Helper functions.
        -- $helpers
-{-       
+{-
          AdminInterface(..)
        , simpleAdmin
        , mkYesodAdmin
        , mkEntityAdmin
-       -- * Low level Template haskell functions. 
+       -- * Low level Template haskell functions.
        -- $lowlevel
-       
+
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveAttributeDisplay
@@ -39,15 +39,18 @@ module Yesod.Admin.TH.Entity
 import Data.Char
 import Data.List
 import qualified Data.Text as T
+import qualified Data.Map as M
 import Data.Maybe
 import Language.Haskell.TH
-import Database.Persist
-import Yesod.Admin.Helpers
+import Database.Persist.EntityDef
+import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
 import Yesod.Admin.Subsite
 
 type Text = T.Text
+type Map = M.Map
+
 pack = T.pack
 unpack = T.unpack
 
@@ -85,6 +88,9 @@ unpack = T.unpack
 --
 -- [@plural@] The plural name for the object.
 --
+-- [@show@] The list of attributes that are shown on the read page of
+--    the object
+--
 -- [@singular@] The singular name for the object.
 --
 -- [@title@] Used to override the default title of an attribute. The
@@ -92,6 +98,100 @@ unpack = T.unpack
 --    form the title. There can be multiple title definitions one for
 --    each attribute.
 
+-- | This datatype controls the admin site generate via the template
+-- haskell functions of this module. Having defined this type you can
+-- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want to
+-- tweak the access controls).
+
+data AdminInterface
+     = AdminInterface { name         :: Text  -- ^ Name of the entity
+                      , singular     :: Maybe Text   -- ^ The singular
+                                                     -- name
+                      , plural       :: Maybe Text   -- ^ The plural form
+                      , dbAttrs      :: [Text]
+                      , derivedAttrs :: [Text]
+                      , titles     :: Map Text Text
+                                   -- ^ The titles of each attribute.
+                                   -- ^ The key is attribute
+                                   -- constructor name and the value
+                                   -- is the title of the attribute.
+                      , inline     ::  Text
+                      -- ^ How to display the inline display of the
+                      -- object. It could either be a database column
+                      -- (a name that starts with lower case) or a
+                      -- constructed (a name that starts with upper
+                      -- case).
+                      , readPageAttrs :: Maybe [Text]
+                      -- ^ Attributes constructors to be shown on the
+                      -- read page.
+                      , selectionPageAttrs  :: Maybe [Text]
+                      -- ^ Ordered list of attribute constructors in
+                      -- the selection listing of the object.
+                      } deriving Show
+
+defaultInterface :: EntityDef -> AdminInterface
+defaultInterface ed
+   = AdminInterface { name     = en
+                    , singular = Nothing
+                    , plural   = Nothing
+                    , dbAttrs  = dc
+                    , derivedAttrs = []
+                    , titles   = M.fromList ts
+                    , inline   = head fs
+                    , readPageAttrs      = Nothing
+                    , selectionPageAttrs = Nothing
+                    }
+    where en = entityName ed
+          dc = map (constructor en) fs
+          fs = map (unHaskellName . fieldHaskell) $ entityFields ed
+          ts = zip dc $ map titleOf fs
+
+-- $attributetitleandconstructors
+--
+-- The default attribute title for a attribute fooBarBiz is @\"Foo bar
+-- biz\"@. I.e it is the uncamelcased version of the attribute
+-- name. You can override setting the title field in the Admin section
+-- of the object.
+
+-- The TH code generates on constructor for each database entry plus
+-- what ever constructed attributes are used in listings. The
+-- constructors are the following.
+--
+--  1. For a database attribute it is represented by camel cased
+--     concatenation of the entity name, the attribute name and the
+--     string Attribute. For example the database column @name@ of
+--     entity Person will give a constructor @PersonNameAttribute@
+--
+--  2. For a constructed attribute corresponding to a function, the
+--     constructor will be the function name with the first letter
+--     capitalised. For example if the function name is
+--     @nameAndEmail@, the constructor will be @NameAndEmail@
+--
+
+isDerived :: Text -> Bool
+isDerived = isUpper . T.head
+
+
+titleOf       :: Text  -- ^ Attribute name
+              -> Text
+constructor   :: Text    -- ^ Entity name
+              -> Text    -- ^ Attribute name
+              -> Text
+
+titleOf = capitalise . unCamelCase
+constructor en attr
+   | T.null    attr    = T.empty
+   | isDerived attr    = capitalise attr
+   | otherwise         = capitalise $ camelCaseUnwords [ en
+                                                       , attr
+                                                       , "Attribute"
+                                                       ]
+
+entityDefToInterface :: EntityDef -> AdminInterface
+entityDefToInterface ed = ai { titles = M.union (titles ai) defTitles }
+   where ai        = procAdminSection ed
+         derived   = derivedAttrs ai
+         defTitles = M.fromList $ zip derived $ map titleOf derived
 
 -- $attributeNameAndTitle
 -- Attributes can be either
@@ -109,39 +209,90 @@ unpack = T.unpack
 --   @('PersistEntity' v, 'PersistStore' b m) => v -> b m 'Text'@
 --
 --
--- The default attribute title for a attribute fooBarBiz is @\"Foo bar
--- biz\"@. I.e it is the uncamelcased version of the attribute name.  You
--- can override setting the title field in the Admin section of the
--- object.
+
+
+-- | Derive an instance of @`Administrable`@ for the type @v@ given
+-- the AdminInterface for @v@.
+
+deriveAdministrable  :: AdminInterface
+                     -> DecsQ
+deriveAdministrable' :: AdminInterface
+                     -> DecQ
+deriveAdministrable  = fmap (:[]) . deriveAdministrable'
+
+-- FIXME: Find a way to set the listSort option.
+deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
+                                     $ instBody
+      where b        = varT $ mkName "b"
+            en       = name ai
+            instBody = [ defDBAttrs   ai
+                       , defAttribute ai   b
+                       , defAttributeTitle ai
+                       ]
+                       ++ catMaybes [ defObjectSingular ai
+                                    , defObjectPlural   ai
+                                    , defSelectionAttrs ai
+                                    , defReadAttrs      ai
+                                    ]
+
+
+                       
+defObjectSingular :: AdminInterface -> Maybe DecQ
+defObjectPlural   :: AdminInterface -> Maybe DecQ
+
+defObjectSingular = fmap (textFun 'objectSingular) . singular
+defObjectPlural   = fmap (textFun 'objectPlural) . plural
+
+
+-- | Define the attribute data type.
+defAttribute :: AdminInterface      -- ^ Entity name
+             -> TypeQ               -- ^ Backend
+             -> DecQ
+
+defAttribute ai b = dataInstD (cxt []) ''Attribute [persistType en b]
+                              cons [''Eq, ''Enum, ''Bounded]
+    where cons   = map  mkConQ cs
+          en     = name ai
+          mkConQ = flip normalC [] . mkNameT
+          cs     = M.keys $ titles ai
+
+defAttributeTitle :: AdminInterface
+                  -> DecQ
+defAttributeTitle ai = singleArgFunc 'attributeTitle
+                               $ [ (mkC c, textL t) | (c,t) <- cts]
+    where cts   = M.toList $ titles ai
+          mkC c = conP (mkNameT c) []
 
 
 
+defSelectionAttrs :: AdminInterface -> Maybe DecQ
+defReadAttrs      :: AdminInterface -> Maybe DecQ
 
--- $attributeconstructors
---
--- The TH code generates on constructor for each database entry plus
--- what ever constructed attributes are used in listings. The
--- constructors are the following.
---
---  1. For a database attribute it is represented by camel cased
---     concatenation of the entity name, the attribute name and the
---     string Attribute. For example the database column @name@ of
---     entity Person will give a constructor @PersonNameAttribute@
---
---  2. For a constructed attribute corresponding to a function, the
---     constructor will be the function name with the first letter
---     capitalised. For example if the function name is
---     @nameAndEmail@, the constructor will be @NameAndEmail@
+defSelectionAttrs = fmap (defListVar 'selectionPageAttributes)
+                         . selectionPageAttrs
+
+defReadAttrs      = fmap (defListVar 'readPageAttributes)
+                         . readPageAttrs
+
+defDBAttrs        :: AdminInterface -> DecQ
+defDBAttrs        = defListVar 'dbAttributes . dbAttrs
+
+defListVar :: Name -> [Text] -> DecQ
+defListVar v es = valD var body []
+   where var  = varP v
+         body = normalB . listE $ map (conE . mkNameT) es
 
 
-{- $helpers
+{-
+
+$helpers
 
 Besides declaring all the necessary admininstrative instances,
 @`mkYesodAdmin`@ applied to the admin interfaces of entity Foo also
 declares the following:
 
   1. The type alias @FooAdmin@ for the time @Admin Site Foo@
-  
+
   2. The function @getFooAdmin@
 
 This is to facilitate hooking of the admin subsite to the main
@@ -154,54 +305,53 @@ in your main routes file.
 
 -}
 
--- | This datatype controls the admin site generate via the template
--- haskell functions of this module. Having defined this type you can
--- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want to
--- tweak the access controls).
+fieldSetter :: AdminInterface -> [Text] -> AdminInterface
+fieldSetter ai line
+   | null line = ai
+   | otherwise = case field of
+                      "inline"   -> ai { inline   = head args              }
+                      "list"     -> ai { selectionPageAttrs = Just argCons
+                                       , derivedAttrs = derivedAttrs ai
+                                                        `union` newAttrs
+                                       }
+                      "plural"   -> ai { plural   = Just $ T.unwords args   }
+                      "singular" -> ai { singular = Just $ T.unwords args   }
+                      "show"     -> ai { readPageAttrs = Just argCons
+                                       , derivedAttrs = derivedAttrs ai
+                                                        `union` newAttrs
+                                       }
+                      "title"    -> setTitle
+   where field       = head line
+         args        = tail line
+         en          = name ai
+         argCons     = map (constructor en) args
+         newAttrs    = map (constructor en) $ filter isDerived args
+         setTitle    = ai { titles = M.insert (constructor en (head args))
+                                              (T.unwords $ tail args)
+                                              $ titles ai
+                          }
 
-data AdminSection
-     = AdminSection { singular :: Text  -- ^ The singular name
-                    , plural   :: Text  -- ^ The plural form
-                    , attributeTitleOverride :: [(Text, Text)]
-                       -- ^ List of tuples (c,t) where c is a
-                       -- attribute and t is its title. You need to
-                       -- specify only those attributes whose default
-                       -- title you are not happy with
-                    , inline   :: Text
-                       -- ^ How to display the inline display of the
-                       -- object. It could either be a database column
-                       -- (a capitalised name) or a constructed (a
-                       -- name that starts with lower case).
-                    , list     :: [Text]
-                       -- ^ Ordered list of attributes in the
-                       -- selection listing of the object.
-                    }
+procAdminSection :: EntityDef -> AdminInterface
+procAdminSection ed = foldl fieldSetter (defaultInterface ed) adminLines
+    where adminLines = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
 
-textFun :: Name -> Text -> DecQ
-textFun name t = funD name [rhs []]
-               where rhs = clause [wildP] $ normalB $ textL t
-
-defObjectSingular :: AdminSection -> DecQ
-defObjectPlural   :: AdminSection -> DecQ
-
-defObjectSingular = textFun 'objectSingular . singular
-defObjectPlural   = textFun 'objectPlural   . plural
 
 {-
 
--- | Generate a simple admin interface. The argument follows the same
--- convention as that of an administrative attribute. It can either be
--- the name of a function that returns the inline representation or
--- can be one of the database column, in which case the first
--- character in upper case.
-simpleAdmin :: String          -- ^ How to display inline
-            -> AdminInterface v
-simpleAdmin col = AdminInterface { singular = ""
-                                 , plural   = ""
-                                 , inline   = col
-                                 , listing  = []
-                                 , attributeTitleOverride = []
-                                 }
+
+          
+
+
+
+
+
+
+defAttrListVar :: Name            -- ^ Name of the variable
+               -> Text            -- ^ The entity name
+               -> [Text]          -- ^ The attributes
+               -> DecQ
+
+{-
 
 -- | This function is similar to the 'mkYesodAdmin' function but does
 -- not derive a 'YesodAdmin' instance for the given entity. Use this
@@ -254,24 +404,7 @@ mkYesodAdmin site ai = do inst <- mkEntityAdmin site ai
 -- to have more control on the generated haskell code you can use
 -- these.
 
-                     
--- | Derive an instance of @`Administrable`@ for the type @v@ given
--- the AdminInterface for @v@.
-deriveAdministrable  :: PersistEntity v
-                     => AdminInterface v
-                     -> DecsQ
-deriveAdministrable' :: PersistEntity v
-                     => AdminInterface v
-                     -> DecQ
-deriveAdministrable  = fmap (:[]) . deriveAdministrable'
-deriveAdministrable' ai = mkInstance [] ''Administrable [persistType v] instBody
-      where v        = getObject ai
-            ats      = attributes ai
-            instBody = singularPlural ai
-                     ++ [ defAttribute v ats
-                        , defAttributeTitle v ats $ attributeTitleOverride ai
-                        , defListAttributes v $ listing ai
-                        ]
+
 
 -- | Derive an instance of `InlineDisplay` for the type `v` given the
 -- AdminInterface for `v`.
@@ -291,7 +424,7 @@ deriveInlineDisplay' :: PersistEntity v
                      -> DecQ
 deriveInlineDisplay site = fmap (:[]) . deriveInlineDisplay' site
 deriveInlineDisplay' site ai
-                     = mkInstance [] 
+                     = mkInstance []
                           ''InlineDisplay [sub, siteT, persistType v] instBody
      where sub    = varT $ mkName "sub"
            siteT  = conT $ mkName site
@@ -327,7 +460,7 @@ deriveAttributeDisplay' site ai
 
 -- | The TH code @defAdmin Site Foo@ generates the following
 -- declarations
--- 
+--
 -- > type FooAdmin = Admin Site Foo
 -- > getFooAdmin :: Site -> FooAdmin
 -- > getFooAdmin _ = getAdmin
@@ -371,40 +504,15 @@ defListAttributes v ats = valD (varP 'listAttributes) body []
           body = normalB $ listE cons
 
 
--- | Define the attribute data type.
-defAttribute :: PersistEntity v
-             => v
-             -> [String]
-             -> DecQ
-defAttribute v ats = dataInstD (cxt []) ''Attribute [persistType v]
-                               (map mkConQ cons) []
-     where cons = map (constructor v) ats
-           mkConQ = flip normalC [] . mkName 
 
 
-defAttributeFunc :: Name          -- ^ The name of the function
-             -> [(String, ExpQ)]  -- ^ The constructors
-             -> DecQ
-defAttributeFunc name consExp = funD name clauses
-       where clauses = [ mkClause c e | (c,e) <- consExp ]
-             mkClause c e = clause [cP] (normalB e) []
-                      where cP = conP (mkName c) []
 
-defAttributeTitle :: PersistEntity v
-                  => v
-                  -> [ String ]
-                  -> [(String,String)]
-                  -> DecQ
-defAttributeTitle v ats override = defAttributeFunc 'attributeTitle 
-                                                    $ map titleExp ats
-    where titleExp at = (constructor v at, litE . stringL $ getTitle at)
-          getTitle at = fromMaybe (capitalise $ unCamelCase at) 
-                                  $ lookup at override
+
 defAttributeDisplay :: PersistEntity v
                     => v
                     -> [String]
                     -> DecQ
-defAttributeDisplay v =  defAttributeFunc 'attributeDisplay . map colDisplay 
+defAttributeDisplay v =  defAttributeFunc 'attributeDisplay . map colDisplay
     where colDisplay at = (constructor v at, displayRHS v at)
 
 
@@ -413,12 +521,6 @@ getObject :: PersistEntity v
           -> v
 getObject _ = undefined
 
-attributes :: PersistEntity v
-        => AdminInterface v
-        -> [String]
-attributes ai = nub (listing ai ++ dbCols)
-   where v       = getObject ai
-         dbCols  = map (capitalise . columnName) $ entityColumns $ entityDef v
 
 isDBAttribute :: String -> Bool
 isDBAttribute = isUpper . head
@@ -441,3 +543,22 @@ displayRHS v at | isDBAttribute at
                 | otherwise      = varE $ mkName at
 
 -}
+
+-}
+
+textFun :: Name -> Text -> DecQ
+textFun f t = funD f [rhs []]
+        where rhs = clause [wildP] $ normalB $ textL t
+
+
+constructorE   :: Text -> Text -> ExpQ
+constructorE e attr = conE $ mkNameT $ constructor e attr
+constructorP   :: Text -> Text -> PatQ
+constructorP e attr = conP (mkNameT $ constructor e attr) []
+
+
+
+
+entityName :: EntityDef -> Text
+entityName = unHaskellName . entityHaskell
+

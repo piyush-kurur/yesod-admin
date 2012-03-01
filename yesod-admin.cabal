@@ -49,6 +49,7 @@ Library
                , bytestring
                , blaze-html
                , template-haskell
+               , containers
                , yesod >=0.10 && <0.11
                , yesod-auth >=0.8 && <0.9
                , shakespeare-css >=0.10 && <0.11
