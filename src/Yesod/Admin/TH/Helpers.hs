@@ -8,7 +8,6 @@ Some helper functions that are useful for themplate Haskell code generation.
 
 module Yesod.Admin.TH.Helpers
        ( undefinedObjectOf
-       , fieldName
        , mkInstance
        , persistType
        , persistStoreP
@@ -16,6 +15,8 @@ module Yesod.Admin.TH.Helpers
        , entityAdmin
        , getEntityAdmin
        , textL
+       , mkNameT
+       , singleArgFunc
        ) where
 
 import Language.Haskell.TH
@@ -24,8 +25,6 @@ import Database.Persist.EntityDef
 import Yesod
 import Yesod.Admin.Helpers.Text
 
-entityName :: PersistEntity v => v -> Text
-entityName = unHaskellName . entityHaskell . entityDef
 
 -- | Get an object associated with the given entity. The object
 -- generated is undefined but useful for type kludges.
@@ -41,7 +40,8 @@ typeName :: PersistEntity v
          => v
          -> String
 typeName = entityName
--}
+
+
 -- | Get the field name associated with an  EnitityField
 fieldName :: PersistEntity v
           => v
@@ -50,6 +50,7 @@ fieldName :: PersistEntity v
 fieldName v fname = camelCaseUnwords [ unCapitalise $ entityName v
                                      , fname
                                      ]
+-}
 {-
 entityColumn :: PersistEntity v
              => EntityField v typ
@@ -71,13 +72,16 @@ persistStoreP b m = classP ''PersistStore [b,m]
 monadP :: TypeQ -> PredQ
 monadP m = classP ''Monad [m]
 
+
 -- | The type name of a persist entity.
-persistType :: PersistEntity v
-            => v
+persistType :: Text
             -> TypeQ
-persistType v = conT . mkNameT $ camelCaseUnwords [ entityName v
-                                                  , "Generic"
-                                                  ]
+            -> TypeQ
+persistType entity backend = appT (conT n) backend
+      where n = mkNameT $ camelCaseUnwords [ entity
+                                           , "Generic"
+                                           ]
+
 
 -- | Generates the entities type alias name
 
@@ -122,3 +126,10 @@ defaultTitleE :: Text -> ExpQ
 defaultTitle  = capitalise . unCamelCase
 defaultTitleE = textL . defaultTitle
 
+-- | Create a single argument function
+singleArgFunc :: Name            -- ^ The name of the function
+              -> [(PatQ, ExpQ)]  -- ^ The clauses
+              -> DecQ
+singleArgFunc name consExp = funD name clauses
+       where clauses = [ mkClause c e | (c,e) <- consExp ]
+             mkClause c e = clause [c] (normalB e) []

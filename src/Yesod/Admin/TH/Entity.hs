@@ -22,15 +22,14 @@ module Yesod.Admin.TH.Entity
 
        -- * Helper functions.
        -- $helpers
-{-
          AdminInterface(..)
-       , simpleAdmin
+       , deriveAdministrable
+
+{-
        , mkYesodAdmin
        , mkEntityAdmin
        -- * Low level Template haskell functions.
        -- $lowlevel
-
-       , deriveAdministrable
        , deriveInlineDisplay
        , deriveAttributeDisplay
 -}
