@@ -55,6 +55,7 @@ module Yesod.Admin.Class
          Administrable(..)
        , InlineDisplay(..)
        , AttributeDisplay(..)
+       , HasAdminForms(..)
        -- * Permissions and Access control.
        , HasAdminUsers (..)
        , CrudControl (..)
@@ -69,6 +70,7 @@ import System.Locale
 import Data.Time
 import Database.Persist.EntityDef
 import Yesod
+import Yesod.Form
 import Yesod.Auth
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.Types
@@ -146,6 +148,11 @@ class ( Eq (Attribute v)
       -- is 20.
       objectsPerPage :: v -> Int
       objectsPerPage = const 20
+
+-- | The crud forms of the entity.
+class PersistEntity v => HasAdminForms v where
+      creatForm  :: MForm sub master v
+      updateForm :: SiteKVPair master v -> MForm sub master v
 
 {-|
 
