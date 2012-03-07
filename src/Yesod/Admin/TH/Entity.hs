@@ -24,7 +24,8 @@ module Yesod.Admin.TH.Entity
        -- $helpers
          AdminInterface(..)
        , deriveAdministrable
-
+       , deriveInlineDisplay
+       , deriveAttributeDisplay
 {-
        , mkYesodAdmin
        , mkEntityAdmin
@@ -186,6 +187,14 @@ constructor en attr
                                                        , "Attribute"
                                                        ]
 
+-- FIXME: Write a Quick check test to check dbAttrToFieldName
+-- (constructer e x) = x where ever x starts with a lower case
+-- alphabet.
+
+dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $ 
+                      init $ tail $ unCamelCaseWords t
+
+
 entityDefToInterface :: EntityDef -> AdminInterface
 entityDefToInterface ed = ai { titles = M.union (titles ai) defTitles }
    where ai        = procAdminSection ed
@@ -234,8 +243,64 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                     , defReadAttrs      ai
                                     ]
 
+-- | Derive an instance of `InlineDisplay` for an entity give its
+-- administrative interface.
 
-                       
+deriveInlineDisplay  :: AdminInterface
+                     -> DecsQ
+-- | Similar to `deriveInlineDisplay` but does not wrap the
+-- declaration inside a list. Not very useful in the wild as splicing
+-- expects `DecsQ` instead `DecQ` but useful in defining other
+-- template haskell function. Currently not exported
+
+deriveInlineDisplay' :: AdminInterface
+                     -> DecQ
+deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
+deriveInlineDisplay' ai = 
+               mkInstance [persistStoreP b m]
+                          ''InlineDisplay [b, m, persistType en b]
+                          instBody
+     where b     = varT $ mkName "b"
+           m     = varT $ mkName "m"
+           en    = name ai
+           body = normalB $ displayRHS en $ inline ai
+           instBody = [valD (varP 'inlineDisplay) body []]
+
+-- | Derive an instance of `AttributeDisplay` for an entity give its
+-- administrative interface.
+
+deriveAttributeDisplay :: AdminInterface
+                       -> DecsQ
+deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
+
+-- | Same as `deriveAttributeDisplay` but does not wrap the
+-- declaration inside a list. Not very useful in the wild as splicing
+-- expects `DecsQ` instead `DecQ` but useful in defining other
+-- template haskell function. Currently not exported
+
+deriveAttributeDisplay' :: AdminInterface
+                        -> DecQ
+deriveAttributeDisplay' ai
+            = mkInstance [persistStoreP b m]
+                    ''AttributeDisplay [b, m, persistType en b]
+                    instBody
+     where b  = varT $ mkName "b"
+           m  = varT $ mkName "m"
+           en = name ai
+           ats = map dbAttrToFieldName (dbAttrs ai) ++ derivedAttrs ai
+           instBody = [ funD 'attributeDisplay $ map mkClause ats ]
+           mkClause at = clause [constructorP en at] body []
+                    where body = normalB $ displayRHS en at
+
+
+displayRHS :: Text
+           -> Text
+           -> ExpQ
+displayRHS en at | isDerived at = varE $ mkNameT $ unCapitalise at
+                 | otherwise    = let fname = varE $ mkNameT $ fieldName en at
+                                      in [| inlineDisplay . $fname |]
+
+
 defObjectSingular :: AdminInterface -> Maybe DecQ
 defObjectPlural   :: AdminInterface -> Maybe DecQ
 
@@ -338,7 +403,7 @@ procAdminSection ed = foldl fieldSetter (defaultInterface ed) adminLines
 {-
 
 
-          
+
 
 
 
@@ -405,12 +470,6 @@ mkYesodAdmin site ai = do inst <- mkEntityAdmin site ai
 
 
 
--- | Derive an instance of `InlineDisplay` for the type `v` given the
--- AdminInterface for `v`.
-deriveInlineDisplay  :: PersistEntity v
-                     => String            -- ^ the site's foundation type
-                     -> AdminInterface v  -- ^ the administrative interface
-                     -> DecsQ
 
 -- | Same as `deriveInlineDisplay` but does not wrap the declaration
 -- inside a list. Not very useful in the wild as splicing expects
@@ -421,40 +480,8 @@ deriveInlineDisplay' :: PersistEntity v
                      => String
                      ->AdminInterface v
                      -> DecQ
-deriveInlineDisplay site = fmap (:[]) . deriveInlineDisplay' site
-deriveInlineDisplay' site ai
-                     = mkInstance []
-                          ''InlineDisplay [sub, siteT, persistType v] instBody
-     where sub    = varT $ mkName "sub"
-           siteT  = conT $ mkName site
-           v = getObject ai
-           body = normalB $ displayRHS v $ inline ai
-           instBody = [valD (varP 'inlineDisplay) body []]
 
--- | Derive an instance of `AttributeDisplay` for the type `v` given
--- the AdminInterface for `v`.
-deriveAttributeDisplay :: PersistEntity v
-                    => String             -- ^ the site's foundation type
-                    -> AdminInterface v   -- ^ the administrative interface
-                    -> DecsQ
-
--- | Same as `deriveAttributeDisplay` but does not wrap the
--- declaration inside a list. Not very useful in the wild as splicing
--- expects `DecsQ` instead `DecQ` but useful in defining other
--- template haskell function. Currently not exported
-
-deriveAttributeDisplay' :: PersistEntity v
-                        => String        -- ^ the site's foundation type
-                        -> AdminInterface v -- ^ the administrative interface
-                        -> DecQ
 deriveAttributeDisplay site = fmap (:[]) . deriveAttributeDisplay' site
-deriveAttributeDisplay' site ai
-            = mkInstance []
-                    ''AttributeDisplay [sub, siteT, persistType v]
-                     [ defAttributeDisplay v $ attributes ai]
-     where sub   = varT $ mkName "sub"
-           siteT = conT $ mkName site
-           v     = getObject ai
 
 
 -- | The TH code @defAdmin Site Foo@ generates the following
@@ -507,12 +534,6 @@ defListAttributes v ats = valD (varP 'listAttributes) body []
 
 
 
-defAttributeDisplay :: PersistEntity v
-                    => v
-                    -> [String]
-                    -> DecQ
-defAttributeDisplay v =  defAttributeFunc 'attributeDisplay . map colDisplay
-    where colDisplay at = (constructor v at, displayRHS v at)
 
 
 getObject :: PersistEntity v
@@ -532,14 +553,6 @@ constructor v col | isDBAttribute col = capitalise $ camelCase
                                                           ]
                   | otherwise      = capitalise col
 
-displayRHS :: PersistEntity v
-           => v
-           -> String
-           -> ExpQ
-displayRHS v at | isDBAttribute at
-                                 = let fname = varE $ mkName $ fieldName v at
-                                       in [| inlineDisplay . $fname |]
-                | otherwise      = varE $ mkName at
 
 -}
 
@@ -557,6 +570,8 @@ constructorP e attr = conP (mkNameT $ constructor e attr) []
 
 
 
+fieldName :: Text -> Text -> Text
+fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
 
 entityName :: EntityDef -> Text
 entityName = unHaskellName . entityHaskell
