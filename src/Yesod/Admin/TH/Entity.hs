@@ -23,6 +23,7 @@ module Yesod.Admin.TH.Entity
        -- * Helper functions.
        -- $helpers
          AdminInterface(..)
+       , entityDefToInterface
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveAttributeDisplay
