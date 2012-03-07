@@ -56,7 +56,7 @@ module Yesod.Admin.Class
        , InlineDisplay(..)
        , AttributeDisplay(..)
        -- * Permissions and Access control.
-       , HasAdminUser (..)
+       , HasAdminUsers (..)
        , CrudControl (..)
        , SelectionControl (..)
        -- * Controlling layout and style
@@ -247,7 +247,7 @@ class ( Monad m
 
 class ( YesodAuth master
       , YesodPersist master
-      ) => HasAdminUser master where
+      ) => HasAdminUsers master where
       isSuperUser :: Monad (YesodDB sub master)
                   => AuthId master -> YesodDB sub master Bool
                   -- ^ Check whether the user is a superuser
@@ -305,7 +305,7 @@ class Yesod master => HasAdminLayout master where
 
 -- | The class defines the access control for crud operations.
 class ( YesodPersist master
-      , HasAdminUser master
+      , HasAdminUsers master
       , Administrable v
       ) => CrudControl master v where
 
@@ -359,7 +359,7 @@ class ( YesodPersist master
 -- underlying backed for the site is an instances of @`PersistQuery`@.
 
 class ( YesodPersist master
-      , HasAdminUser master
+      , HasAdminUsers master
       , Administrable v
       ) => SelectionControl master v where
 
