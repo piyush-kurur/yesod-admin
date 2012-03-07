@@ -43,17 +43,23 @@ Finally what admin operations are possible for an entity on a
 particular site depends on the persistent backend of that site. For
 basic CRUD operations one needs the persistent backend to be an
 instance of `PersistStore`. If this is satisfied one can define an
-instance for the class `YesodAdminCrud` for that site entity pair. If
+instance for the class `CrudControl` for that site entity pair. If
 in addition the backend supports selection, one can define mass
 actions like mass deletion from a selection list. In such a case the
-site entity pair has to be an instance of `YesodAdminMassAction`.
+site entity pair has to be an instance of `SelectionControl`.
 
 -}
 module Yesod.Admin.Class
-       ( Administrable(..)
+       (
+       -- * Entity classes.
+         Administrable(..)
        , InlineDisplay(..)
        , AttributeDisplay(..)
+       -- * Permissions and Access control.
        , HasAdminUser (..)
+       , CrudControl (..)
+       , SelectionControl (..)
+       -- * Controlling layout and style
        , HasAdminLayout (..)
        ) where
 
@@ -73,14 +79,18 @@ import Text.Hamlet
 
     This class captures objects that have an admin interface. The most
 important member of this class is the associated data type of this
-class are @'Attribute'@.  Minimum complete definition of this class
-requires defining the associated type @'Attribute' v@ and the
+class are @'Attribute'@. An attribute an object can either be a
+database column of an object or might be a constructed entity. The
+former we call a /database attribute/ whereas the later we call a
+/derived attribute/. Each attribute also has a title which is used in
+the selection list of the object. The member function
+@'attributeTitle'@ maps an attribute of a data type @`v`@ (of type
+@'Attribute' v@) to its title.
+
+Minimum complete definition of this class requires defining the
+associated type @'Attribute' v@, the variable @'dbAttributes'@ and the
 functions @'attributeTitle'@.
 
-An attribute an object can either be a database column of an object or
-might be a constructed entity. Each attribute in the listing has a
-title. The member function @'attributeTitle'@ maps an attribute of a
-data type @`v`@ (of type @'Attribute' v@) to its title.
 
 -}
 
@@ -115,7 +125,7 @@ class ( Eq (Attribute v)
       -- | The title of the given attribute.
       attributeTitle :: Attribute v -> Text
 
-      
+
       -- | The database attributes of the object.
       dbAttributes :: [Attribute v]
       -- | In the selection page of the object what all attributes
@@ -295,7 +305,7 @@ class Yesod master => HasAdminLayout master where
                                                         <div .content>^{content}
                                                     |]
 
--- | The class defines the access control to crud operations.
+-- | The class defines the access control for crud operations.
 class ( YesodPersist master
       , HasAdminUser master
       , Administrable v
@@ -345,11 +355,10 @@ class ( YesodPersist master
                                   createPerm <- canCreate authId v
                                   return (delPerm && createPerm)
 
--- | The class defines the access control to Selection operations. The
--- access controls are defined using filters and are these control the
--- selection page of the entity. Recall that selection page is
--- supported only for sites whose persistent backend is an instance of
--- PersistQuery.
+-- | The class defines the access control for selection operations. We
+-- use filters to check access permissions on a selected list of
+-- objects. Note that one can support selection pages only if the
+-- underlying backed for the site is an instances of @`PersistQuery`@.
 
 class ( YesodPersist master
       , HasAdminUser master
