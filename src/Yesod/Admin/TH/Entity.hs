@@ -27,6 +27,7 @@ module Yesod.Admin.TH.Entity
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveAttributeDisplay
+       , mkAdminClasses
 {-
        , mkYesodAdmin
        , mkEntityAdmin
@@ -219,6 +220,17 @@ entityDefToInterface ed = ai { titles = M.union (titles ai) defTitles }
 --
 --
 
+-- | This TH combinator derives the three classes @`Administrable`@
+-- @`InlineDisplay`@ and @`AttributeDisplay`@ for a persistent entity.
+
+mkAdminClasses :: [EntityDef] -> DecsQ
+mkAdminClasses = sequence . concatMap mapper
+    where mkAC ai = [ deriveAdministrable' ai
+                    , deriveInlineDisplay' ai
+                    , deriveAttributeDisplay' ai
+                    ]
+          mapper   = mkAC . entityDefToInterface
+          
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
 -- the AdminInterface for @v@.
