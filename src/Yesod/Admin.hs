@@ -8,27 +8,23 @@ entities of your site import this module.
 
 module Yesod.Admin
        (
-       -- * Admin site.
-       -- $concepts
-     
        -- * Basic usage.
        -- $basic
-
+      
        -- * Configuring the admin interfaces.
        -- $configuring
 
+{-
        -- ** Access control.
        -- $accesscontrol
-
-       -- * Linking to admin pages.
-       -- $linking
-
+-}
        -- * Advanced usage (mostly for developers).
        -- $advanced
 
          module Yesod.Admin.Subsite
        , module Yesod.Admin.Class
        , module Yesod.Admin.Types
+       , module Yesod.Admin.TH
        -- , module Yesod.Admin.Render
        -- , module Yesod.Admin.Handlers
        --, module Yesod.Admin.TH
@@ -38,25 +34,20 @@ import Yesod.Admin.Subsite
 import Yesod.Admin.Class
 import Yesod.Admin.Types
 import Yesod.Admin.Render
+import Yesod.Admin.TH
 
 -- import Yesod.Admin.Handlers
--- import Yesod.Admin.TH
 -- import Yesod.Admin.Dispatch()
 
 {- $concepts
 
-The goal of an admin interface is to provide basic CRUD
-operations. Any non-trivial site would also want to have access
-controls on these operations. The goal of this module is to provide
-such an interface.
+This module provides a way to perform admin actions on Persistent
+objects of your site.
 
-Before we go into the details of how this is done let us explain few
-concepts that are relevant for effective use of the admin site.
-
-   * Listings: In an admin site we would want to list all the objects
-     of a particular kind. Such lists will be shown as a table with
-     columns showing attributes of the object. By /listings/ we
-     mean such a display.
+   * Selection: In an admin site we would want to list all the objects
+     of a particular kind. Such lists will be shown as a table with columns
+     showing attributes of the object. By /listings/ we mean such a
+     display.
 
    * Attribute title: Attributes have /attribute title/ which is
      shown in the header of a listing.
@@ -91,60 +82,55 @@ that your master site is an instances of
 
    2. YesodAuth: What does access control mean without authentication
 
-The very first step is to define the admin layout to use. The default
-admin skin should be fine so declare the following instance
+Firstly you need to prepare your site for admin operations. This
+involves two steps (1) setting up a layout for your admin site and (2)
+declaring who are the administrative users of your site. You can set
+up the layout by declaring your site to be an instance of
+@`HasAdminLayout`@. The default declaration will give you the default
+skin and that should be good enough for testing. However, feel free to
+change the layout.
 
-> instance HasAdminLayout Site where
+> instance HasAdminLayout Site where  -- use the default skin
 
-Now you need to tell who are the users who admininstrative access
-site.
+You can declare the administrative users of your site by declaring
+your site to be an instance of @`HasAdminUsers`@. The default declartion
+declares all users as non-admin users so you will most probably need
+to redeclare the member functions.
 
 > instance HasAdminUsers Site where
 >          isSuperUser authid = ....
 >          isAdminUser authid = ....
 
-Both @`isSuperUser` authid@ and @`isAdminUser` authid@ are your site
-handlers (i.e. @'GHandler' sub Site Bool@) that returns a boolean
-value indicating whether the input userid are super users or admin
-users respectively. For more details check "Yesod.Admin.Class"
+Both @`isSuperUser` authid@ and @`isAdminUser` authid@ are database
+actions, i.e. @'YesodDB' sub Site Bool@, that returns a boolean value
+indicating whether the input userid are super users or admin users
+respectively. For more details check "Yesod.Admin.Class"
 
-All the above stuff you need to do once for each site.  The next step
-is to prepare each entity to for an admininstrative interfaces. We
-explain this with an example. Let us say you have a entity defined as
-follows.
+Next you need to prepare each entity that you need to administer.  The
+simplest way to achieve this is to use the template haskell function
+`mkAdminClasses`. The administrative properties of an entity is
+controlled by the section named Admin. In the example below, entities
+of type Person will be listed using two fields name and age. For
+groups the default administrative setting is used. For more details on
+how to modify default administrative settings check the module
+"Yesod.Admin.TH.Entity"
 
->      [persist|
+
+> share [ mkAdminClasses
+>       , mkPersist sqlSettings
+>       , mkMigrate "migrateAll"
+>       ]
+>       [persist|
 >                Person
 >                        name    Text
 >                        email   Text
 >                        age     Text
 >                        address Text
+>                        Admin
+>                               list name age
+>                Group
+>                       name    text
 >     |]
-
-You can define the admin interfaces by the following code
-
->
-> mkYesodAdmin (simpleAdmin "nameAndEmail" :: AdminInterface Person)
-> nameAndEmail person = return $ Text.concat [ personName person
->                                            , "<", personEmail person, ">"
->                                            ]
-
-Here the @nameAdminEmail@ function is used both in the inline display
-as well as in the column display. Notice that this is not a database
-column of Person.
-
-The function `mkYesodAdmin` declares all the instances and other
-sundry like the type alias @PersonAdmin@ (it is an alias to @`Admin`
-Site Person@) and the function @getPersonAdmin@. 
-
-
-Finally, you can the hook the admin site of person to the main site as
-follows.
-
-> mkYesod "Site" [parseRoutes|
->                / RootR GET
->                ...
->                /admin/person/ PersonAdminR PersonAdmin getPersonAdmin
 
 -}
 
@@ -160,30 +146,6 @@ details refer to the module "Yesod.Admin.Class".
 
 -}
 
-{- $configuring
-
-Clearly @simpleAdmin@ is not always sufficient. For example say, we
-want to display name and age in column displays of Person. We could
-change this by changing the above code as follows
-
-> mkYesodAdmin (simpleAdmin "nameAndEmail" 
->                          { lisiting = ["Name", "Age"] }
->                          :: AdminInterface Person
->             )
-
-In both listings and inline we follow the convention that
-   
-   * Strings starting with an upper case letter denote database
-     columns.
-
-   * Strings starting with a lower case letter denotes a constructed
-     attribute.  In this case you should have a function with the same
-     name which returns the textual representation.
-     
-For more details on what all can be configured check out the
-documentation of the `AdminInterface` type
-
--}
 
 {- $linking
 
