@@ -138,11 +138,11 @@ class ( Eq (Attribute v)
       readPageAttributes :: [Attribute v]
       readPageAttributes = dbAttributes
 
-      -- | Controls in which order the objects are listed. By default
-      -- no sorting is done, i.e. it is governed by the database
-      -- backend.
-      listSort   :: [SelectOpt v]
-      listSort = []
+      -- | Controls in which order the objects are listed on the
+      -- selection page. By default no sorting is done, i.e. it is
+      -- governed by the database backend.
+      selectionPageSort   :: [SelectOpt v]
+      selectionPageSort = []
 
       -- | How many elements to be shown on a page. The default value
       -- is 20.
