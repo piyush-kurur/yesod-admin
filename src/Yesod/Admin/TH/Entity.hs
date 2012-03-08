@@ -46,9 +46,6 @@ import Yesod.Admin.Subsite
 type Text = T.Text
 type Map = M.Map
 
-pack = T.pack
-unpack = T.unpack
-
 -- $adminsection
 -- To define the admin interface for a persistent objects one needs to
 -- define and admin section in the persistent object definition For
