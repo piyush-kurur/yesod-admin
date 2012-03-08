@@ -58,9 +58,9 @@ type Map = M.Map
 -- >                        age     Text
 -- >                        address Text
 -- >                        Admin
--- >                            inline nameAndEmail
--- >                            list   Name Email Age
--- >                            title Name Full Name
+-- >                            inline NameAndEmail
+-- >                            list   name email age
+-- >                            title name Full Name
 -- >     |]
 --
 -- In the above code snippet, we have defined the /fields/ @inline@,
@@ -71,24 +71,34 @@ type Map = M.Map
 -- [@inline@] Attribute used in the inline display of the object. Should
 --    occur only once in the admin section. There should be a single
 --    parameter which is the name of the attribute (See the convention on
---    attribute naming)
+--    attribute naming). The default value is the first field in the entity
+--    definition.
 --
 -- [@list@] A list of attributes used in the selection list display of
 --    the objects. Should occur only once in the admin section. The
 --    parameter is the list of attribute and the ordering of the
---    attribute should be as required in the selection listing.
+--    attribute should be as required in the selection listing. The
+--    default value is to use the same field as the inline display.
 --
 -- [@plural@] The plural name for the object.
 --
 -- [@show@] The list of attributes that are shown on the read page of
---    the object
+--    the object. This defaults to all the dbAttributes.
+--
+-- [@sort@]. Controls how the values are sorted on the selection page.
+--    The values should be dbEntries and nothing else. By default the
+--    sorting is done based on the default sort associated with that
+--    entry.
 --
 -- [@singular@] The singular name for the object.
 --
 -- [@title@] Used to override the default title of an attribute. The
---    first attribute is the attribute name and the rest of paramenters
---    form the title. There can be multiple title definitions one for
---    each attribute.
+--    first attribute is the attribute name and the rest of
+--    paramenters form the title. There can be multiple title
+--    definitions one for each attribute. The default title is the
+--    uncamelcased version of the attribute name. For example
+--    @fullName@ and @NameAndEmail@ have default titles as @\"Full
+--    name\"@ and @\"Name and email\"@ respectively.
 
 -- | This datatype controls the admin site generate via the template
 -- haskell functions of this module. Having defined this type you can
