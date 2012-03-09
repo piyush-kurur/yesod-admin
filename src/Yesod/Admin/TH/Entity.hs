@@ -38,6 +38,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Language.Haskell.TH
 import Database.Persist.EntityDef
+import Yesod
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
@@ -129,6 +130,9 @@ data AdminInterface
                       , selectionPageAttrs  :: Maybe [Text]
                       -- ^ Ordered list of attribute constructors in
                       -- the selection listing of the object.
+                      , sortOrder      :: Maybe [Text]
+                      -- ^ The order in which elements are sorted on
+                      -- the selection page.
                       } deriving Show
 
 defaultInterface :: EntityDef -> AdminInterface
@@ -142,6 +146,7 @@ defaultInterface ed
                     , inline   = head fs
                     , readPageAttrs      = Nothing
                     , selectionPageAttrs = Nothing
+                    , sortOrder          = Nothing
                     }
     where en = entityName ed
           dc = map (constructor en) fs
@@ -193,7 +198,7 @@ constructor en attr
 -- (constructer e x) = x where ever x starts with a lower case
 -- alphabet.
 
-dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $ 
+dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $
                       init $ tail $ unCamelCaseWords t
 
 
@@ -230,7 +235,7 @@ mkAdminClasses = sequence . concatMap mapper
                     , deriveAttributeDisplay' ai
                     ]
           mapper   = mkAC . entityDefToInterface
-          
+
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
 -- the AdminInterface for @v@.
@@ -254,6 +259,7 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                     , defObjectPlural   ai
                                     , defSelectionAttrs ai
                                     , defReadAttrs      ai
+                                    , defSelectionPageSort ai
                                     ]
 
 -- | Derive an instance of `InlineDisplay` for an entity give its
@@ -269,7 +275,7 @@ deriveInlineDisplay  :: AdminInterface
 deriveInlineDisplay' :: AdminInterface
                      -> DecQ
 deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
-deriveInlineDisplay' ai = 
+deriveInlineDisplay' ai =
                mkInstance [persistStoreP b m]
                           ''InlineDisplay [b, m, persistType en b]
                           instBody
@@ -354,11 +360,26 @@ defReadAttrs      = fmap (defListVar 'readPageAttributes)
 defDBAttrs        :: AdminInterface -> DecQ
 defDBAttrs        = defListVar 'dbAttributes . dbAttrs
 
+
+defSelectionPageSort :: AdminInterface
+                     -> Maybe DecQ
+defSelectionPageSort ai = fmap (defsps $ name ai) $ sortOrder ai
+
+defsps :: Text -> [Text] -> DecQ
+defsps en fs = valD spsVar body []
+    where body   = normalB $ listE $ map sortOpt fs
+          spsVar = varP 'selectionPageSort
+          asc  = appE $ conE 'Asc
+          desc = appE $ conE 'Desc
+          sortOpt f | T.head f   == '-' = desc $ mkEntityField en $ T.tail f
+                    | T.head f   == '+' = asc  $ mkEntityField en $ T.tail f
+                    | otherwise        = asc  $ mkEntityField en f
+
+
 defListVar :: Name -> [Text] -> DecQ
 defListVar v es = valD var body []
    where var  = varP v
          body = normalB . listE $ map (conE . mkNameT) es
-
 
 {-
 
@@ -397,6 +418,7 @@ fieldSetter ai line
                                        , derivedAttrs = derivedAttrs ai
                                                         `union` newAttrs
                                        }
+                      "sort"     -> ai { sortOrder = Just args }
                       "title"    -> setTitle
    where field       = head line
          args        = tail line
@@ -431,3 +453,5 @@ fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
 entityName :: EntityDef -> Text
 entityName = unHaskellName . entityHaskell
 
+mkEntityField :: Text -> Text -> ExpQ
+mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
