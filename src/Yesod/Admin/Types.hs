@@ -7,11 +7,9 @@ This modules defines some type convenient type aliases
 module Yesod.Admin.Types
        ( SiteKey
        , SiteKVPair
-       , CrudDB
        ) where
 
 import Yesod
-import Yesod.Admin.Subsite
 
 {-|
 
@@ -31,7 +29,3 @@ type defined.
 -}
 
 type SiteKVPair master v = (SiteKey master v, v)
-
--- | Database action of a admin site
-
-type CrudDB master v = YesodDB (Crud master v) master
