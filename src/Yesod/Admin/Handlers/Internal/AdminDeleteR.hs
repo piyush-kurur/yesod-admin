@@ -11,13 +11,13 @@ module Yesod.Admin.Handlers.Internal.AdminDeleteR
        ) where
 import Yesod
 import Yesod.Admin.Types
+import Yesod.Admin.Handlers.Internal.Helpers
 
 getAdminDeleteR :: ( Yesod master
                    , YesodPersist master
-                   , b ~ YesodPersistBackend master
-                   , PathPiece (Key b v)
+                   , PathPiece (SiteKey master v)
                    )
-                => Key b v  -- ^ The
-                -> AdminHandler master v RepHtml
+                => SiteKey master v  -- ^ The
+                -> CrudHandler master v RepHtml
 getAdminDeleteR k = defaultLayout $ do 
                addHamlet [hamlet|Should delete object of Id #{toPathPiece k}|]

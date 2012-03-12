@@ -12,13 +12,12 @@ module Yesod.Admin.Handlers.Internal.AdminUpdateR
 
 import Yesod
 import Yesod.Admin.Types
-
+import Yesod.Admin.Handlers.Internal.Helpers
 getAdminUpdateR :: ( Yesod master
                    , YesodPersist master
-                   , b ~ YesodPersistBackend master
-                   , PathPiece (Key b v)
+                   , PathPiece (SiteKey master v)
                    )
-                 => Key b v  -- ^ The
-                 -> AdminHandler master v RepHtml
+                 => SiteKey master v  -- ^ The
+                 -> CrudHandler master v RepHtml
 getAdminUpdateR k = defaultLayout $ do
          addHamlet [hamlet|Should display object of Id #{toPathPiece k}|]

@@ -10,7 +10,8 @@ module Yesod.Admin.Handlers.Internal.AdminCreateR
 
 import Yesod
 import Yesod.Admin.Types
+import Yesod.Admin.Handlers.Internal.Helpers
 
 getAdminCreateR :: Yesod master
-                => AdminHandler master v RepHtml
+                => CrudHandler master v RepHtml
 getAdminCreateR = defaultLayout $ addHamlet [hamlet|should support creation|]
