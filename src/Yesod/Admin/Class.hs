@@ -149,6 +149,10 @@ class ( Eq (Attribute v)
       objectsPerPage :: v -> Int
       objectsPerPage = const 20
 
+      -- | This variable returns what all admin actions allowed for this
+      -- data type. It is a list of action names and action values.
+      actions :: PersistStore b m => [(Text, Action b m v)]
+
 -- | The crud forms of the entity.
 class PersistEntity v => HasAdminForms v where
       creatForm  :: MForm sub master v
@@ -383,3 +387,12 @@ class ( YesodPersist master
       deleteFilter authId = do issup <- isSuperUser authId
                                if issup then return $ FilterAnd []
                                   else return $ FilterOr []
+
+      -- ^ Filters objects on which the given action is allowed.
+      actionFilter :: Monad (YesodDB sub master)
+                   => AuthId master     -- ^ The admin user
+                   -> Text              -- ^ Action name
+                   -> YesodDB sub master (Filter v)
+      actionFilter authId _ = do issup <- isSuperUser authId
+                                 if issup then return $ FilterAnd []
+                                    else return $ FilterOr []
