@@ -8,10 +8,8 @@ module Yesod.Admin.Types
        ( SiteKey
        , SiteKVPair
        , Action
-       , CrudHandler
-       , CrudWidget
-       , SelectionHandler
-       , SelectionWidget
+       , AdminHandler
+       , AdminWidget
        ) where
 
 import Yesod
@@ -45,14 +43,8 @@ data Action b m v = ActionDelete            -- ^ A delete action
                   | ActionCustom { runCustomAction :: Key b v -> b m () }
                                             -- ^ A custom action
 
--- | A type alias for widgets of the selection subsite.
-type SelectionWidget  master v  = GWidget  (Selection master v) master
+-- | A type alias for widgets of the admin subsite.
+type AdminWidget  master v  = GWidget  (Admin master v) master
 
--- | A type alias for handlers of the selection subsite.
-type SelectionHandler master v  = GHandler (Selection master v) master
-
--- | A type alias for widgets on the crud subsite.
-type CrudWidget       master v  = GWidget  (Crud master v) master
-
--- | A type alais for handlers on the crud subsite.
-type CrudHandler      master v  = GHandler (Crud master v) master
+-- | A type alias for handlers of the admin subsite.
+type AdminHandler master v  = GHandler (Admin master v) master

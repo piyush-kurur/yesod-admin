@@ -16,17 +16,10 @@ import Yesod
 import Yesod.Admin.Class
 import Yesod.Admin.Subsite
 import Yesod.Admin.Types
+import Yesod.Admin.Handlers.Internal.AdminPageR
 
 
 
-getAdminListR :: ( Yesod master
-                 , YesodAdmin master v
-                 , YesodPersist master
-                 , b ~ YesodPersistBackend master
-                 , m ~ GGHandler (Admin master v) master IO
-                 , PersistEntity v
-                 , PersistBackend b m
-                 )
+getAdminListR :: Yesod master
                => AdminHandler master v RepHtml
-getAdminListR  = do liftR   <- getRouteToMaster
-                    redirect RedirectPermanent $ liftR $ AdminPageR 0
+getAdminListR  = getAdminPageR 0

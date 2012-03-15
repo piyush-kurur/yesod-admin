@@ -19,7 +19,8 @@ import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 import Yesod.Admin.Class
 import Yesod.Admin.Render
-import Yesod.Admin.Handlers.Helpers
+import Yesod.Admin.Handlers.Internal.Helpers
+import Text.Hamlet
 
 
 {-
@@ -39,10 +40,14 @@ there is nothing great that is happening here.
 
 
 -}
-getAdminPageR ::  YesodAdmin master v
+getAdminPageR ::  Yesod master
               => Int   -- ^ The page to view
               -> AdminHandler master v RepHtml
 
+getAdminPageR pg = defaultLayout $ do
+              addHamlet [hamlet| page #{pg} should be displayed |]
+
+{-
 getAdminPageR pg = withAdminUser $ getAdminPageR' pg
 getAdminPageR' ::  YesodAdmin master v
                => Int   -- ^ The page to view
@@ -148,3 +153,5 @@ getObjectParams f = return $ f undefined
 getObjectAttributes :: YesodAdmin master v
                     => AdminHandler master v [Attribute v]
 getObjectAttributes = return listAttributes
+
+-}

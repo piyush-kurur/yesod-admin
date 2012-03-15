@@ -20,6 +20,6 @@ getAdminReadR :: ( Yesod master
                  , PathPiece (Key b v)
                  )
               => Key b v  -- ^ The
-              -> CrudHandler master v RepHtml
+              -> AdminHandler master v RepHtml
 getAdminReadR k = defaultLayout $ do
               addHamlet [hamlet|Should display object of Id #{toPathPiece k}|]

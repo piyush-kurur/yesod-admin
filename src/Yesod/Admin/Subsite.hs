@@ -19,41 +19,43 @@ between two classes of admin subsites.
 
 -}
 module Yesod.Admin.Subsite
-       ( Crud
-       , getCrud
-       , Selection
-       , getSelection
+       ( Admin
        -- * Routes
        -- $routes
        ) where
 
 import Yesod
+import Data.Default
 
--- | The subsite that provides the crud interface.
+-- | The admin subsite
 
-data Crud master v = Crud
+data Admin master v = Admin
 
-getCrud :: Crud master v
-getCrud = Crud
+-- | Get a default
+instance Default (Admin master v) where
+         def = Admin
+
 
 {-
 
 The roots are
 
-/#ID        -- Read it
-/create     -- Creat it
-/update/#ID -- update it
-/delete/#ID -- delete it
+/#ID            -- Read it
+/create         -- Creat it
+/update/#ID     -- update it
+/delete/#ID     -- delete it
+/selection      -- selection list
+/selection/#Int -- Page
+/action         -- Action page
 
 -}
 
-
 instance ( YesodPersist master
          , PathPiece (Key (YesodPersistBackend master) v)
-         ) => RenderRoute (Crud master v) where
+         ) => RenderRoute (Admin master v) where
 
          -- | The routes for crud operations.
-         data Route (Crud master v)
+         data Route (Admin master v)
                        = CreateR      -- create an object
                        | ReadR   (Key (YesodPersistBackend master) v)
                                       -- ^ view an object
@@ -61,36 +63,15 @@ instance ( YesodPersist master
                                       -- ^ update an objects
                        | DeleteR (Key (YesodPersistBackend master) v)
                                       -- ^ delete an object
+                       | ListR
+                       | PageR Int
+                       | ActionR
                        deriving (Eq, Show, Read)
 
          renderRoute CreateR     = (["create"],[])
          renderRoute (ReadR   k) = ([toPathPiece k],[])
          renderRoute (UpdateR k) = (["update", toPathPiece k],[])
          renderRoute (DeleteR k) = (["delete", toPathPiece k],[])
-
--- | The subsite for selection objects.
-
-data Selection master v = Selection
-getSelection :: Selection master v
-getSelection = Selection
-
-{-
-
-The routes are
-
-/          -- The selection
-/#Int      -- The th page
-/action    -- The handler that performs the action
-
--}
-
-instance RenderRoute (Selection master v) where
-         -- | The routes for listing objects
-         data Route (Selection master v) = ListR
-                                         | ActionR
-                                         | PageR Int deriving Eq
-
-
-         renderRoute ListR     = ([],[])
-         renderRoute ActionR   = (["action"],[])
-         renderRoute (PageR p) = ([toPathPiece p],[])
+         renderRoute ListR       = (["list"],[])
+         renderRoute (PageR pg)  = (["list", toPathPiece pg],[])
+         renderRoute ActionR     = (["action"],[])

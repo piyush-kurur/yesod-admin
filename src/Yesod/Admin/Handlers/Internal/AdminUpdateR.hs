@@ -18,6 +18,6 @@ getAdminUpdateR :: ( Yesod master
                    , PathPiece (SiteKey master v)
                    )
                  => SiteKey master v  -- ^ The
-                 -> CrudHandler master v RepHtml
+                 -> AdminHandler master v RepHtml
 getAdminUpdateR k = defaultLayout $ do
          addHamlet [hamlet|Should display object of Id #{toPathPiece k}|]

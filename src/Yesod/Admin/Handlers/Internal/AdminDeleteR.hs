@@ -18,6 +18,6 @@ getAdminDeleteR :: ( Yesod master
                    , PathPiece (SiteKey master v)
                    )
                 => SiteKey master v  -- ^ The
-                -> CrudHandler master v RepHtml
+                -> AdminHandler master v RepHtml
 getAdminDeleteR k = defaultLayout $ do 
                addHamlet [hamlet|Should delete object of Id #{toPathPiece k}|]

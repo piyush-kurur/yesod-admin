@@ -44,6 +44,3 @@ runDBWithAuthId action = do aid <- requireAuthId
                             runDB $ do allow <- isAdminUser aid
                                        if allow then action aid
                                           else fail $ unpack permissionDeniedText
-
-type CrudHandler master v = GHandler (Crud master v) master
-type SelectionHandler master v = GHandler (Selection master v) master
