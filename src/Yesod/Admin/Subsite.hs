@@ -36,6 +36,18 @@ data Crud master v = Crud
 getCrud :: Crud master v
 getCrud = Crud
 
+{-
+
+The roots are
+
+/#ID        -- Read it
+/create     -- Creat it
+/update/#ID -- update it
+/delete/#ID -- delete it
+
+-}
+
+
 instance ( YesodPersist master
          , PathPiece (Key (YesodPersistBackend master) v)
          ) => RenderRoute (Crud master v) where
@@ -52,7 +64,7 @@ instance ( YesodPersist master
                        deriving (Eq, Show, Read)
          
          renderRoute CreateR     = (["create"],[])
-         renderRoute (ReadR   k) = (["read",   toPathPiece k],[])
+         renderRoute (ReadR   k) = ([toPathPiece k],[])
          renderRoute (UpdateR k) = (["update", toPathPiece k],[])
          renderRoute (DeleteR k) = (["delete", toPathPiece k],[])
 
@@ -62,10 +74,22 @@ data Selection master v = Selection
 getSelection :: Selection master v
 getSelection = Selection
 
+{-
+
+The routes are
+
+/          -- The selection
+/#Int      -- The th page
+/action    -- The handler that performs the action
+
+-}
 instance RenderRoute (Selection master v) where
          -- | The routes for listing objects
          data Route (Selection master v) = ListR
                                          | PageR Int deriving Eq
+                                         | ActionR
 
-         renderRoute ListR     = (["list"],[])
-         renderRoute (PageR p) = (["page", toPathPiece p],[])
+         renderRoute ListR     = ([],[])
+         renderRoute ActionR   = (["action"],[])
+         renderRoute (PageR p) = ([toPathPiece p],[])
+         
