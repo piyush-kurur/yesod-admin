@@ -62,7 +62,7 @@ instance ( YesodPersist master
                        | DeleteR (Key (YesodPersistBackend master) v)
                                       -- ^ delete an object
                        deriving (Eq, Show, Read)
-         
+
          renderRoute CreateR     = (["create"],[])
          renderRoute (ReadR   k) = ([toPathPiece k],[])
          renderRoute (UpdateR k) = (["update", toPathPiece k],[])
@@ -83,13 +83,14 @@ The routes are
 /action    -- The handler that performs the action
 
 -}
+
 instance RenderRoute (Selection master v) where
          -- | The routes for listing objects
          data Route (Selection master v) = ListR
-                                         | PageR Int deriving Eq
                                          | ActionR
+                                         | PageR Int deriving Eq
+
 
          renderRoute ListR     = ([],[])
          renderRoute ActionR   = (["action"],[])
          renderRoute (PageR p) = ([toPathPiece p],[])
-         
