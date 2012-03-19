@@ -13,6 +13,8 @@ You will never have to look into this.
 -}
 module Yesod.Admin.Resource
        ( adminResources
+       , selectionResources
+       , crudResources
        , renderRouteInstance
        -- * Routes
        -- $routes
@@ -38,23 +40,58 @@ The routes are
 
 -}
 
-adminResources :: String -> String -> [Resource Type]
-adminResources master v =
+-- | These resources are meant for sites with a persistent backend
+-- which is an instance of "PersistQuery".
+selectionResources :: String            -- ^ master site type
+                   -> String            -- ^ entity type
+                   -> [Resource Type]
+selectionResources master v =
+        [ Resource "ListR"   (string "list"  ) $ get
+        , Resource "PageR"   page $ get
+        , Resource "ActionR" (string "action") $ post
+        ]
+        where get      = methods ["GET"]
+              getPost  = methods ["GET", "POST"]
+              post     = methods ["POST"]
+              key      = [ keyP master v ]
+              string s = [ stringP s ]
+              page     = [ stringP "list", intP]
+
+-- | These resources are meant for sites with a persistent backend
+-- which is an instance of "PersistStore".
+crudResources :: String   -- ^ master site
+              -> String   -- ^ Entity type
+              -> [Resource Type]
+crudResources master v =
         [ Resource "ReadR"   key $ get
         , Resource "CreateR" (string "create") $ getPost
         , Resource "UpdateR" (onKey "update" ) $ getPost
         , Resource "DeleteR" (onKey "delete" ) $ getPost
-        , Resource "ListR"   (string "list"  ) $ get
-        , Resource "PageR"   page              $ get
-        , Resource "ActionR" (string "action") $ post
         ]
-  where get      = methods ["GET"]
-        getPost  = methods ["GET", "POST"]
-        post     = methods ["POST"]
-        key      = [ keyP master v ]
-        string s = [ stringP s ]
-        onKey  s = [ stringP s, keyP master v]
-        page     = [ stringP "list", intP]
+        where get      = methods ["GET"]
+              getPost  = methods ["GET", "POST"]
+              post     = methods ["POST"]
+              key      = [ keyP master v ]
+              string s = [ stringP s ]
+              onKey  s = [ stringP s, keyP master v]
+
+-- | All admin resources.
+adminResources :: String        -- ^ master site
+               -> String        -- ^ Entity type
+               -> [Resource Type]
+adminResources master v = crudResources master v
+                        ++ selectionResources master v
+
+renderRouteInstance :: String -> String -> DecQ
+renderRouteInstance m v = do rr <- mkRenderRoute m v
+                             return $ InstanceD [yp, pathp] renderR
+                                                [rr, mkRoute m v]
+   where yp     = ClassP ''YesodPersist [master]
+         pathp  = ClassP ''PathPiece $ [keyT m v]
+         master = VarT $ mkName m
+         val    = VarT $ mkName v
+         adminT = foldl AppT (ConT ''Admin) [master, val]
+         renderR = AppT (ConT ''RenderRoute) adminT
 
 mkRoute :: String -> String -> Dec
 mkRoute master val = DataInstD [] ''Route [admin] cons
@@ -69,16 +106,6 @@ mkRenderRoute :: String -> String -> DecQ
 mkRenderRoute m v = do clauses <- mkRenderRouteClauses $ adminResources m v
                        return $ FunD 'renderRoute clauses
 
-renderRouteInstance :: String -> String -> DecQ
-renderRouteInstance m v = do rr <- mkRenderRoute m v
-                             return $ InstanceD [yp, pathp] renderR
-                                                [rr, mkRoute m v]
-   where yp     = ClassP ''YesodPersist [master]
-         pathp  = ClassP ''PathPiece $ [keyT m v]
-         master = VarT $ mkName m
-         val    = VarT $ mkName v
-         adminT = foldl AppT (ConT ''Admin) [master, val]
-         renderR = AppT (ConT ''RenderRoute) adminT
 
 
 
