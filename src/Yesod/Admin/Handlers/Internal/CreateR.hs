@@ -4,14 +4,14 @@
 {-|
 
 -}
-module Yesod.Admin.Handlers.Internal.AdminCreateR
-       ( getAdminCreateR
+module Yesod.Admin.Handlers.Internal.CreateR
+       ( getCreateR
        ) where
 
 import Yesod
 import Yesod.Admin.Types
 import Yesod.Admin.Handlers.Internal.Helpers
 
-getAdminCreateR :: Yesod master
+getCreateR :: Yesod master
                 => AdminHandler master v RepHtml
-getAdminCreateR = defaultLayout $ addHamlet [hamlet|should support creation|]
+getCreateR = defaultLayout $ addHamlet [hamlet|should support creation|]

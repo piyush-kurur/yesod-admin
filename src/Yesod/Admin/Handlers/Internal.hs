@@ -1,15 +1,15 @@
 module Yesod.Admin.Handlers.Internal
-       ( module Yesod.Admin.Handlers.Internal.AdminReadR
-       , module Yesod.Admin.Handlers.Internal.AdminCreateR
-       , module Yesod.Admin.Handlers.Internal.AdminUpdateR
-       , module Yesod.Admin.Handlers.Internal.AdminDeleteR
-       , module Yesod.Admin.Handlers.Internal.AdminListR
-       , module Yesod.Admin.Handlers.Internal.AdminPageR
+       ( module Yesod.Admin.Handlers.Internal.ReadR
+       , module Yesod.Admin.Handlers.Internal.CreateR
+       , module Yesod.Admin.Handlers.Internal.UpdateR
+       , module Yesod.Admin.Handlers.Internal.DeleteR
+       , module Yesod.Admin.Handlers.Internal.ListR
+       , module Yesod.Admin.Handlers.Internal.PageR
        ) where
 
-import Yesod.Admin.Handlers.Internal.AdminReadR
-import Yesod.Admin.Handlers.Internal.AdminCreateR
-import Yesod.Admin.Handlers.Internal.AdminUpdateR
-import Yesod.Admin.Handlers.Internal.AdminDeleteR
-import Yesod.Admin.Handlers.Internal.AdminListR
-import Yesod.Admin.Handlers.Internal.AdminPageR
+import Yesod.Admin.Handlers.Internal.ReadR
+import Yesod.Admin.Handlers.Internal.CreateR
+import Yesod.Admin.Handlers.Internal.UpdateR
+import Yesod.Admin.Handlers.Internal.DeleteR
+import Yesod.Admin.Handlers.Internal.ListR
+import Yesod.Admin.Handlers.Internal.PageR

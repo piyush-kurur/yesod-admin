@@ -21,7 +21,6 @@ Library
   GHC-Options: -Wall
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Class
-                 , Yesod.Admin.Subsite
                  , Yesod.Admin.Types
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
@@ -32,16 +31,17 @@ Library
   
   Other-modules: Yesod.Admin.Helpers
                , Yesod.Admin.Helpers.Text
+               , Yesod.Admin.Resource
                , Yesod.Admin.TH.Helpers
 --                , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.Internal
                , Yesod.Admin.Handlers.Internal.Helpers
-               , Yesod.Admin.Handlers.Internal.AdminReadR
---             , Yesod.Admin.Handlers.Internal.AdminListR
---             , Yesod.Admin.Handlers.Internal.AdminPageR
---             , Yesod.Admin.Handlers.Internal.AdminCreateR
---             , Yesod.Admin.Handlers.Internal.AdminUpdateR
---             , Yesod.Admin.Handlers.Internal.AdminDeleteR
+               , Yesod.Admin.Handlers.Internal.ReadR
+               , Yesod.Admin.Handlers.Internal.ListR
+               , Yesod.Admin.Handlers.Internal.PageR
+               , Yesod.Admin.Handlers.Internal.CreateR
+               , Yesod.Admin.Handlers.Internal.UpdateR
+               , Yesod.Admin.Handlers.Internal.DeleteR
 --             , Yesod.Admin.Dispatch
   Build-depends: base
                , time
@@ -55,6 +55,7 @@ Library
                , yesod >=0.10 && <0.11
                , yesod-auth >=0.8 && <0.9
                , yesod-form >=0.4 && <0.5
+               , yesod-routes >= 0.0.1 && <0.1
                , shakespeare-css >=0.10 && <0.11
                , hamlet >=0.10 && <0.11
                , persistent >=0.8 && <0.9

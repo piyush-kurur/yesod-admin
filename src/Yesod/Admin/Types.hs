@@ -5,7 +5,8 @@ This modules defines some type convenient type aliases
 -}
 
 module Yesod.Admin.Types
-       ( SiteKey
+       ( Admin
+       , SiteKey
        , SiteKVPair
        , Action
        , AdminHandler
@@ -13,8 +14,16 @@ module Yesod.Admin.Types
        ) where
 
 import Yesod
-import Yesod.Admin.Subsite
 import Database.Persist.Query.Internal
+import Data.Default
+
+-- | The admin subsite
+
+data Admin master v = Admin
+
+-- | Get a default
+instance Default (Admin master v) where
+         def = Admin
 
 {-|
 

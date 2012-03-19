@@ -2,20 +2,19 @@
 {-# LANGUAGE QuasiQuotes        #-}
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE FlexibleContexts   #-}
-
+{-# LANGUAGE TypeFamilies       #-}
 {-|
 
 This module defines the handler for the /page/ route.
 
 -}
-module Yesod.Admin.Handlers.Internal.AdminPageR
-       ( getAdminPageR
+module Yesod.Admin.Handlers.Internal.PageR
+       ( getPageR
        ) where
 
 import Data.Text(Text)
 import Yesod
 import Yesod.Auth
-import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 import Yesod.Admin.Class
 import Yesod.Admin.Render
@@ -40,11 +39,16 @@ there is nothing great that is happening here.
 
 
 -}
-getAdminPageR ::  Yesod master
-              => Int   -- ^ The page to view
-              -> AdminHandler master v RepHtml
+getPageR :: ( Yesod master
+            , YesodPersist master
+            , b ~ YesodPersistBackend master
+            , m ~ AdminHandler master v
+            , PersistQuery b m
+            )
+          => Int   -- ^ The page to view
+          -> AdminHandler master v RepHtml
 
-getAdminPageR pg = defaultLayout $ do
+getPageR pg = defaultLayout $ do
               addHamlet [hamlet| page #{pg} should be displayed |]
 
 {-

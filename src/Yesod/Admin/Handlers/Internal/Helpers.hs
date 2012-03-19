@@ -13,7 +13,7 @@ module Yesod.Admin.Handlers.Internal.Helpers where
 import Yesod
 import Yesod.Auth
 import Yesod.Admin.Class
-import Yesod.Admin.Subsite
+import Yesod.Admin.Types
 
 import Data.Text (Text, unpack)
 

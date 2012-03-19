@@ -42,7 +42,6 @@ import Yesod
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
-import Yesod.Admin.Subsite
 
 type Text = T.Text
 type Map = M.Map
