@@ -43,7 +43,7 @@ Library
                , Yesod.Admin.Handlers.Internal.CreateR
                , Yesod.Admin.Handlers.Internal.UpdateR
                , Yesod.Admin.Handlers.Internal.DeleteR
---             , Yesod.Admin.Dispatch
+               , Yesod.Admin.Dispatch
   Build-depends: base
                , time
                , old-locale
