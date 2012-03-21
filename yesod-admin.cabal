@@ -32,6 +32,7 @@ Library
   Other-modules: Yesod.Admin.Helpers
                , Yesod.Admin.Helpers.Text
                , Yesod.Admin.Resource
+               , Yesod.Admin.Routes
                , Yesod.Admin.TH.Helpers
 --                , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.Internal

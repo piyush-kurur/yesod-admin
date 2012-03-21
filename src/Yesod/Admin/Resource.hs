@@ -15,6 +15,7 @@ You will never have to look into this.
 module Yesod.Admin.Resource
        ( selectionResources
        , crudResources
+       , mkAdminRoutes
        -- * Routes
        -- $routes
        ) where
@@ -64,6 +65,24 @@ crudResources master v =
         ]
         where onKey s = [ stringP s, keyP master v]
               key     = [ keyP master v ]
+
+
+mkAdminRoutes :: String -> String -> DecsQ
+mkAdminRoutes master v
+      = sequence [ mkI (crudType master v)
+                       (crudResources master v)
+                 , mkI (selectionType master v)
+                       (selectionResources master v)
+                 ]
+      where mkI       = mkRenderRouteInstance' context
+            context   = [ yp, pathPiece ]
+            pathPiece = ClassP ''PathPiece
+                               [ keyT master v]
+            yp        = ClassP ''YesodPersist 
+                               [ VarT $ mkName master ]
+
+
+string :: String -> [ (CheckOverlap, Piece typ) ]
 string s = [ stringP s ]
 
 methods :: [String] -> Dispatch typ
@@ -92,6 +111,20 @@ keyT master val = foldl AppT keyCon [AppT ypb m, v]
            ypb     = ConT $ ''YesodPersistBackend
            keyCon  = ConT $ ''Key
 
+
+           
+
+adminType :: Name -> String -> String -> Type
+adminType n m v = foldl AppT (ConT n) 
+                        $ map (VarT . mkName) [m,v]
+
+
+crudType :: String -> String -> Type
+selectionType :: String -> String -> Type
+crudType      = adminType ''Crud
+selectionType = adminType ''Selection
+
+
 {-
 -- | All admin resources.
 adminResources :: String        -- ^ master site
@@ -106,9 +139,6 @@ renderRouteInstance master v = do instanceD context
                                             [ mkRenderRoute master v
                                             , mkRoute master v
                                             ]
-   where context      = cxt [ yesodPersistP master, pathPiece ]
-         pathPiece    = classP ''PathPiece $ [return $ keyT master v]
-         renderR = appT (conT ''RenderRoute) $ adminType master v
 
 
 yesodPersistP :: String -> PredQ
