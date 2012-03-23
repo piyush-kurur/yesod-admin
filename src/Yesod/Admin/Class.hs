@@ -62,6 +62,7 @@ module Yesod.Admin.Class
        , SelectionControl (..)
        -- * Controlling layout and style
        , HasAdminLayout (..)
+       , LiftCrudRoutes (..)
        ) where
 
 import Data.ByteString (ByteString)
@@ -396,3 +397,10 @@ class ( YesodPersist master
       actionFilter authId _ = do issup <- isSuperUser authId
                                  if issup then return $ FilterAnd []
                                     else return $ FilterOr []
+
+-- | An internal class used to lift crud routes to master routes.
+-- This instance is required so that the pages on the selection sites
+-- can refer to urls on the crud subsite.
+
+class LiftCrudRoutes master v where
+      liftCrudR :: Route (Crud master v) -> Route master

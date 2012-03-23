@@ -5,25 +5,36 @@ This modules defines some type convenient type aliases
 -}
 
 module Yesod.Admin.Types
-       ( Admin
+       ( Crud
+       , Selection
        , SiteKey
        , SiteKVPair
        , Action
-       , AdminHandler
-       , AdminWidget
+       , CrudHandler
+       , CrudWidget
+       , SelectionHandler
+       , SelectionWidget
        ) where
 
 import Yesod
 import Database.Persist.Query.Internal
 import Data.Default
 
--- | The admin subsite
+-- | The crud subsite
+data Crud master v = Crud
 
-data Admin master v = Admin
+-- | The selection subsite
+data Selection master v = Selection
 
--- | Get a default
-instance Default (Admin master v) where
-         def = Admin
+-- | Default value for the Crud site
+instance Default (Crud master v) where
+         def = Crud
+
+-- | Default value of Selection site
+instance Default (Selection master v) where
+         def = Selection
+
+
 
 {-|
 
@@ -53,7 +64,14 @@ data Action b m v = ActionDelete            -- ^ A delete action
                                             -- ^ A custom action
 
 -- | A type alias for widgets of the admin subsite.
-type AdminWidget  master v  = GWidget  (Admin master v) master
+type CrudWidget  master v  = GWidget  (Crud master v) master
 
 -- | A type alias for handlers of the admin subsite.
-type AdminHandler master v  = GHandler (Admin master v) master
+type CrudHandler master v  = GHandler (Crud master v) master
+
+
+-- | A type alias for widgets of the selection subsite.
+type SelectionWidget  master v  = GWidget  (Selection master v) master
+
+-- | A type alias for handlers of the selection subsite.
+type SelectionHandler master v  = GHandler (Selection master v) master
