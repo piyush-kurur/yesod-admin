@@ -22,8 +22,8 @@ import Yesod.Admin.Handlers.Internal.PageR
 getListR :: ( Yesod master
             , YesodPersist master
             , b ~ YesodPersistBackend master
-            , m ~ AdminHandler master v
+            , m ~ SelectionHandler master v
             , PersistQuery b m
             )
-         => AdminHandler master v RepHtml
+         => SelectionHandler master v RepHtml
 getListR = getPageR 0

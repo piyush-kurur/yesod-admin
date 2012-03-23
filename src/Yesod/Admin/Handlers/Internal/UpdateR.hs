@@ -8,6 +8,7 @@
 -}
 module Yesod.Admin.Handlers.Internal.UpdateR
        ( getUpdateR
+       , postUpdateR
        ) where
 
 import Yesod
@@ -18,6 +19,16 @@ getUpdateR :: ( Yesod master
               , PathPiece (SiteKey master v)
               )
             => SiteKey master v  -- ^ The
-            -> AdminHandler master v RepHtml
+            -> CrudHandler master v RepHtml
 getUpdateR k = defaultLayout $ do
-       addHamlet [hamlet|Should display object of Id #{toPathPiece k}|]
+       addHamlet [hamlet|Should display update form of objectId #{toPathPiece k}|]
+
+postUpdateR :: ( Yesod master
+              , YesodPersist master
+              , PathPiece (SiteKey master v)
+              )
+            => SiteKey master v  -- ^ The
+            -> CrudHandler master v RepHtml
+
+postUpdateR k = defaultLayout $ do
+       addHamlet [hamlet|Should update objectId #{toPathPiece k}|]

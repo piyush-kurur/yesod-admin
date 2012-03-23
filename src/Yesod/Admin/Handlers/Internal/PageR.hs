@@ -42,11 +42,11 @@ there is nothing great that is happening here.
 getPageR :: ( Yesod master
             , YesodPersist master
             , b ~ YesodPersistBackend master
-            , m ~ AdminHandler master v
+            , m ~ SelectionHandler master v
             , PersistQuery b m
             )
           => Int   -- ^ The page to view
-          -> AdminHandler master v RepHtml
+          -> SelectionHandler master v RepHtml
 
 getPageR pg = defaultLayout $ do
               addHamlet [hamlet| page #{pg} should be displayed |]

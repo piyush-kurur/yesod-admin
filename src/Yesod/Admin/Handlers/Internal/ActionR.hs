@@ -15,19 +15,18 @@ module Yesod.Admin.Handlers.Internal.ActionR
 import Data.Text(Text)
 import Yesod
 import Yesod.Auth
-import Yesod.Admin.Subsite
 import Yesod.Admin.Types
 import Yesod.Admin.Class
 import Yesod.Admin.Render
-import Yesod.Admin.Handlers.Helpers
+import Yesod.Admin.Handlers.Internal.Helpers
 
 postActionR :: ( Yesod master
                , YesodPersist master
                , b ~ YesodPersistBackend master
-               , m ~ AdminHandler master v
+               , m ~ SelectionHandler master v
                , PersistQuery b m
                )
-             => AdminHandler master v RepHtml
+             => SelectionHandler master v RepHtml
 
-postPageR  = defaultLayout $ do
+postActionR  = defaultLayout $ do
            addHamlet [hamlet| should run the given action|]
