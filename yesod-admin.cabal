@@ -52,10 +52,10 @@ Library
                , template-haskell
                , containers
                , data-default
-               , yesod >=0.10 && <0.11
-               , yesod-auth >=0.8 && <0.9
-               , yesod-form >=0.4 && <0.5
-               , yesod-routes >= 0.0.1 && <0.1
+               , yesod >=1.0 && <1.1
+               , yesod-auth >=1.0 && <1.1
+               , yesod-form >=1.0 && <1.1
+               , yesod-routes >= 1.0 && < 1.1
                , shakespeare-css >=0.10 && <0.11
                , hamlet >=0.10 && <0.11
-               , persistent >=0.8 && <0.9
+               , persistent >=0.9 && <0.10
