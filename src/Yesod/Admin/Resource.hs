@@ -16,12 +16,14 @@ module Yesod.Admin.Resource
        ( selectionResources
        , crudResources
        , mkAdminRoutes
+       , mkAdminDispatch
        -- * Routes
        -- $routes
        ) where
 
 import Yesod hiding (get)
 import Yesod.Admin.Types
+import Yesod.Admin.Class
 import Data.Default
 import Yesod.Routes.TH
 import Language.Haskell.TH
@@ -81,6 +83,12 @@ mkAdminRoutes master v
             yp        = ClassP ''YesodPersist 
                                [ VarT $ mkName master ]
 
+-- | Generate dispatch instance for selection and crud subsites.
+mkAdminDispatch :: String -> String -> DecsQ
+mkAdminDispatch m v = sequence [ dispatchCrud m v
+                               , dispatchSelection m v
+                               ]
+
 
 string :: String -> [ (CheckOverlap, Piece typ) ]
 string s = [ stringP s ]
@@ -125,40 +133,7 @@ crudType      = adminType ''Crud
 selectionType = adminType ''Selection
 
 
-{-
--- | All admin resources.
-adminResources :: String        -- ^ master site
-               -> String        -- ^ Entity type
-               -> [Resource Type]
-adminResources master v = crudResources master v
-                        ++ selectionResources master v
-
-renderRouteInstance :: String -> String -> DecsQ
-renderRouteInstance master v = do instanceD context
-                                            renderR
-                                            [ mkRenderRoute master v
-                                            , mkRoute master v
-                                            ]
-
-
-yesodPersistP :: String -> PredQ
-yesodPersistP master = classP ''YesodPersist [ varT $ mkName master]
-
-
-applyT :: TypeQ -> [TypeQ] -> TypeQ
-applyT f = foldl appT f
-
-crudT :: applyT conT ''
-{-
-adminType :: String -> String -> TypeQ
-adminType master v = applyT (conT ''Admin)
-                           [ varT $ mkName master
-                           , varT $ mkName v
-                           ]
-
--}
-
--- ^ Generate an instance of YesodDispatch.
+-- | Generate an instance of YesodDispatch.
 mkDispatchInstance :: CxtQ       -- ^ The context
                    -> TypeQ      -- ^ subsite
                    -> TypeQ      -- ^ master
@@ -166,7 +141,7 @@ mkDispatchInstance :: CxtQ       -- ^ The context
                    -> DecQ
 mkDispatchInstance context sub master res = instanceD context
                                                    yDispatch
-                                                   [ thisDispatch]   
+                                                   [thisDispatch]   
         where clauses  = mkDispatchClause [|yesodRunner|]
                                           [|yesodDispatch|]
                                           [|fmap chooseRep|]
@@ -174,52 +149,32 @@ mkDispatchInstance context sub master res = instanceD context
               thisDispatch    = funD 'yesodDispatch [clauses]
               yDispatch = [t| YesodDispatch $sub $master |]
 
+-- | Generate dispatch instance for Crud subsite.
+dispatchCrud :: String -> String -> DecQ
+dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
+   where c   = cxt [ yp, pp, ps ]
+         yp  = classP ''YesodPersist [ mT ]
+         pp  = classP ''PathPiece    [ key ]
+         ps  = classP ''PersistStore [ yBackend, handler]
+         key      = [t| Key $yBackend $vT |]
+         yBackend = [t| YesodPersistBackend $mT |]
+         handler  = [t| GHandler $crudT $mT |]
+         crudT    = [t| Crud $mT $vT |]
+         mT  = varT $ mkName m
+         vT  = varT $ mkName v
 
-dispatchContext :: Name -> String -> String -> CxtQ
-dispatchContext backendClass master v
-                = cxt [ yesodPersistP master
-                      , classP backendClass [ yBackend, handler]
-                      , pathpiece
-                      ]
-     where pathpiece = classP ''PathPiece [ key ]
-           key       = applyT (conT ''Key) [ yBackend
-                                           , varT $ mkName v
-                                           ]
-           masterN   = mkName master
-           handler   = applyT (conT ''GHandler) [ adminType master v
-                                                , varT masterN
-                                                ]
-           yBackend  = appT (conT ''YesodPersistBackend)
-                            $ varT masterN
-           
-
-dispatchStore :: String -> String -> DecQ
-              -- ^ Create a dispatch instance when the persistent
-              -- backend is an instance of store.
-
-dispatchStore master v =
-      mkDispatchInstance (dispatchContext ''PersistStore master v)
-                         (adminType master v)
-                         (varT $ mkName master)
-                         $ crudResources master v
-
-dispatchQuery master v =
-      mkDispatchInstance (dispatchContext ''PersistQuery master v)
-                         (adminType master v)
-                         (varT $ mkName master)
-                         $ adminResources master v
-
-mkRoute :: String -> String -> DecQ
-mkRoute master val = dataInstD (cxt [])
-                    ''Route [adminType master val] cons
-                            [''Eq, ''Show, ''Read]
-   where res    = adminResources master val
-         cons   = map return $ mkRouteCons res
-
-mkRenderRoute :: String -> String -> DecQ
-mkRenderRoute m v = do clauses <- mkRenderRouteClauses 
-                                      $ adminResources m v
-                       return $ FunD 'renderRoute clauses
-
--}
-
+-- | Generate dispatch instance for Selection subsite.
+dispatchSelection :: String -> String -> DecQ
+dispatchSelection m v = mkDispatchInstance c selT mT
+                                           $ selectionResources m v
+   where c   = cxt [ yp, pp, ps, lc]
+         lc  = classP ''LiftCrudRoutes [ mT, vT]
+         yp  = classP ''YesodPersist [ mT ]
+         pp  = classP ''PathPiece    [ key ]
+         ps  = classP ''PersistQuery [ yBackend, handler]
+         key      = [t| Key $yBackend $vT |]
+         yBackend = [t| YesodPersistBackend $mT |]
+         handler  = [t| GHandler $selT $mT |]
+         selT     = [t| Selection $mT $vT |]
+         mT  = varT $ mkName m
+         vT  = varT $ mkName v
