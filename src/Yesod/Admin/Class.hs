@@ -292,6 +292,12 @@ class Yesod master => HasAdminLayout master where
       branding   :: GWidget sub master ()
       branding   = do addHtml [shamlet|Yesod Admin|]
 
+      -- | Toolbar for your admin site. This is where you might want
+      -- to include a welcome message and/or login, logout links.
+
+      toolBar    :: GWidget sub master ()
+      toolBar    = return ()
+
       -- | Sets up the styles to use on admin pages. While you can
       -- have arbitray widget code here, it is better to add only the
       -- style related stuff here. This way you can change the style
@@ -312,6 +318,7 @@ class Yesod master => HasAdminLayout master where
                           $ do _ <- adminStyles
                                [whamlet|
                                     <div .branding>^{branding}
+                                    <div .toolbar>^{toolBar}
                                     <div .content>^{content}
                                |]
 
