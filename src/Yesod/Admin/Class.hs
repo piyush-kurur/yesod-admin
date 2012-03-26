@@ -290,8 +290,7 @@ class Yesod master => HasAdminLayout master where
       -- those to other members (like adminStyles) of the class.
 
       branding   :: GWidget sub master ()
-      branding   = do setTitle "Yesod Admin"
-                      addHtml [shamlet|Yesod Admin|]
+      branding   = do addHtml [shamlet|Yesod Admin|]
 
       -- | Sets up the styles to use on admin pages. While you can
       -- have arbitray widget code here, it is better to add only the
@@ -309,11 +308,12 @@ class Yesod master => HasAdminLayout master where
 
       adminLayout :: GWidget sub master a  -- ^ The admin widget to render
                   -> GHandler sub master RepHtml
-      adminLayout content = defaultAdminLayout $ do _ <- adminStyles
-                                                    [whamlet|
-                                                        <div .branding>^{branding}
-                                                        <div .content>^{content}
-                                                    |]
+      adminLayout content = defaultAdminLayout
+                          $ do _ <- adminStyles
+                               [whamlet|
+                                    <div .branding>^{branding}
+                                    <div .content>^{content}
+                               |]
 
 -- | The class defines the access control for crud operations.
 class ( YesodPersist master
