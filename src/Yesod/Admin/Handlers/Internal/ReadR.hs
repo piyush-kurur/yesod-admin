@@ -22,4 +22,4 @@ getReadR :: ( Yesod master
           => Key b v  -- ^ The
           -> CrudHandler master v RepHtml
 getReadR k = defaultLayout $ do
-       addHamlet [hamlet|Should display object of Id #{toPathPiece k}|]
+       toWidget [hamlet|Should display object of Id #{toPathPiece k}|]

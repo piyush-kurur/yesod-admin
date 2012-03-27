@@ -9,7 +9,7 @@ module Yesod.Admin.Types
        , Selection
        , SiteKey
        , SiteKVPair
-       , Action
+       , Action(..)
        , CrudHandler
        , CrudWidget
        , SelectionHandler

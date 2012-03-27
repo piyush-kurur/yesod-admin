@@ -290,7 +290,7 @@ class Yesod master => HasAdminLayout master where
       -- those to other members (like adminStyles) of the class.
 
       branding   :: GWidget sub master ()
-      branding   = do addHtml [shamlet|Yesod Admin|]
+      branding   = do toWidget [shamlet|Yesod Admin|]
 
       -- | Toolbar for your admin site. This is where you might want
       -- to include a welcome message and/or login, logout links.

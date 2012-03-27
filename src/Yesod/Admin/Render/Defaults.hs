@@ -42,13 +42,13 @@ defaultListing lst = addWidget [whamlet|
             objects = if totalObjects lst > 1 then listingPlural lst
                       else listingSingular lst
 
-mkLink route t = addHamlet [hamlet| 
-                <td>
-                    <a href=@{route}> #{t}
-                |]
+mkLink route t = toWidget [hamlet| 
+                    <td>
+                        <a href=@{route}> #{t}
+                    |]
   
 
-mkText t = addHtml [shamlet| <td> #{t} |]
+mkText t = toWidget [shamlet| <td> #{t} |]
 
 -- | The layout to use for admin pages.
 defaultAdminLayout :: Yesod master 
@@ -68,9 +68,9 @@ defaultAdminLayout w = do p <- widgetToPageContent w
 
 
 defaultAdminStyles :: GWidget sub master ()
-defaultAdminStyles = do addCassius adminStyle
-                        addCassius tableStyle
-                        addCassius buttonStyle
+defaultAdminStyles = do toWidget adminStyle
+                        toWidget tableStyle
+                        toWidget buttonStyle
 
 -- | Colours of the main panel
 mainPanelBackground :: Text

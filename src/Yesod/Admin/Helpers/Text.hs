@@ -22,8 +22,10 @@ type Text = T.Text
 
 camelCaseUnwords :: [Text] -> Text
 camelCaseUnwords (x:xs) = T.concat $ x : map capitalise xs
+camelCaseUnwords [] = ""
 
 -- | Convert a space seperated string to camel case notation.
+camelCase :: Text -> Text
 camelCase = camelCaseUnwords . T.words 
 
 -- | Like words but uses camel case convention to determine word

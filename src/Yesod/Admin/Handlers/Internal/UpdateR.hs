@@ -31,4 +31,4 @@ postUpdateR :: ( Yesod master
             -> CrudHandler master v RepHtml
 
 postUpdateR k = defaultLayout $ do
-       addHamlet [hamlet|Should update objectId #{toPathPiece k}|]
+       toWidget [hamlet|Should update objectId #{toPathPiece k}|]

@@ -15,8 +15,8 @@ import Yesod.Admin.Handlers.Internal.Helpers
 
 getCreateR :: Yesod master
            => CrudHandler master v RepHtml
-getCreateR = defaultLayout $ addHamlet [hamlet|should support creation|]
+getCreateR = defaultLayout $ toWidget [hamlet|should support creation|]
 
 postCreateR :: Yesod master
             => CrudHandler master v RepHtml
-postCreateR = defaultLayout $ addHamlet [hamlet|should support creation|]
+postCreateR = defaultLayout $ toWidget [hamlet|should support creation|]

@@ -21,7 +21,6 @@ module Yesod.Admin.TH.Helpers
 
 import Language.Haskell.TH
 import Data.Text( Text, unpack)
-import Database.Persist.EntityDef
 import Yesod
 import Yesod.Admin.Helpers.Text
 
@@ -100,7 +99,7 @@ textL t = sigE strL $ conT ''Text
 mkNameT :: Text -> Name
 mkNameT = mkName . unpack
 
-
+{-
 defaultCons     :: Text -> Text  -- ^ creates a constructor name from
                                  -- a sentence.
 defaultFunction :: Text -> Text  -- ^ creates a function name from a
@@ -125,6 +124,8 @@ defaultTitleE :: Text -> ExpQ
 
 defaultTitle  = capitalise . unCamelCase
 defaultTitleE = textL . defaultTitle
+
+-}
 
 -- | Create a single argument function
 singleArgFunc :: Name            -- ^ The name of the function

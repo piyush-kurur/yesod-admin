@@ -49,7 +49,7 @@ getPageR :: ( Yesod master
           -> SelectionHandler master v RepHtml
 
 getPageR pg = defaultLayout $ do
-              addHamlet [hamlet| page #{pg} should be displayed |]
+              toWidget [hamlet| page #{pg} should be displayed |]
 
 {-
 getAdminPageR pg = withAdminUser $ getAdminPageR' pg

@@ -29,4 +29,4 @@ postActionR :: ( Yesod master
              => SelectionHandler master v RepHtml
 
 postActionR  = defaultLayout $ do
-           addHamlet [hamlet| should run the given action|]
+           toWidget [hamlet| should run the given action|]

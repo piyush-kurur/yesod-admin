@@ -20,4 +20,4 @@ postDeleteR :: ( Yesod master
             => SiteKey master v  -- ^ The
             -> CrudHandler master v RepHtml
 postDeleteR k = defaultLayout $ do 
-         addHamlet [hamlet|Should delete object of Id #{toPathPiece k}|]
+         toWidget [hamlet|Should delete object of Id #{toPathPiece k}|]
