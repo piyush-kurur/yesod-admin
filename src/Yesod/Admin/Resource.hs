@@ -6,6 +6,7 @@
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE QuasiQuotes          #-}
 {-# LANGUAGE ConstraintKinds      #-}
+
 {-|
 
 This module defines the resource associated with the admin subsite.
@@ -17,8 +18,6 @@ module Yesod.Admin.Resource
        , crudResources
        , mkAdminRoutes
        , mkAdminDispatch
-       -- * Routes
-       -- $routes
        ) where
 
 import Yesod hiding (get)
@@ -43,11 +42,9 @@ The routes are
 -}
 
 -- | These resources are meant for sites with a persistent backend
--- which is an instance of "PersistQuery".
-selectionResources :: String            -- ^ master site type
-                   -> String            -- ^ entity type
-                   -> [Resource Type]
-selectionResources master v =
+-- which is an instance of @'PersistQuery'@.
+selectionResources :: [Resource Type]
+selectionResources =
         [ Resource "ListR"   (string "list"  ) $ get
         , Resource "PageR"   [stringP "list", intP]
                                        $ get
@@ -55,7 +52,7 @@ selectionResources master v =
         ]
 
 -- | These resources are meant for sites with a persistent backend
--- which is an instance of "PersistStore".
+-- which is an instance of @'PersistStore'@.
 crudResources :: String   -- ^ master site
               -> String   -- ^ Entity type
               -> [Resource Type]
@@ -68,13 +65,14 @@ crudResources master v =
         where onKey s = [ stringP s, keyP master v]
               key     = [ keyP master v ]
 
-
+-- | Create the @RenderRoute@ instances for both @Crud@ and
+-- @Selection@ subsites.
 mkAdminRoutes :: String -> String -> DecsQ
 mkAdminRoutes master v
       = sequence [ mkI (crudType master v)
                        (crudResources master v)
                  , mkI (selectionType master v)
-                       (selectionResources master v)
+                       selectionResources
                  ]
       where mkI       = mkRenderRouteInstance' context
             context   = [ yp, pathPiece ]
@@ -133,7 +131,7 @@ crudType      = adminType ''Crud
 selectionType = adminType ''Selection
 
 
--- | Generate an instance of YesodDispatch.
+-- | Generate an instance of @'YesodDispatch'@.
 mkDispatchInstance :: CxtQ       -- ^ The context
                    -> TypeQ      -- ^ subsite
                    -> TypeQ      -- ^ master
@@ -149,7 +147,7 @@ mkDispatchInstance context sub master res = instanceD context
               thisDispatch    = funD 'yesodDispatch [clauses]
               yDispatch = [t| YesodDispatch $sub $master |]
 
--- | Generate dispatch instance for Crud subsite.
+-- | Generate dispatch instance for @'Crud'@ subsite.
 dispatchCrud :: String -> String -> DecQ
 dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
    where c   = cxt [ yp, pp, ps ]
@@ -163,11 +161,11 @@ dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
          mT  = varT $ mkName m
          vT  = varT $ mkName v
 
--- | Generate dispatch instance for Selection subsite.
+-- | Generate dispatch instance for @'Selection'@ subsite.
 dispatchSelection :: String -> String -> DecQ
 dispatchSelection m v = mkDispatchInstance c selT mT
-                                           $ selectionResources m v
-   where c   = cxt [ yp, pp, ps, lc]
+                                           selectionResources
+   where c   = cxt [yp, pp, ps, lc]
          lc  = classP ''LiftCrudRoutes [ mT, vT]
          yp  = classP ''YesodPersist [ mT ]
          pp  = classP ''PathPiece    [ key ]
