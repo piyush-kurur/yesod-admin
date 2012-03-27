@@ -24,6 +24,8 @@ Library
                  , Yesod.Admin.Types
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
+                 , Yesod.Admin.Message
+                 , Yesod.Admin.Message.English
                  , Yesod.Admin.Render
                  , Yesod.Admin.Render.Defaults
    --                 , Yesod.Admin.TH.Site
