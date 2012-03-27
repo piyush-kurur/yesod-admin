@@ -23,6 +23,7 @@ module Yesod.Admin.Resource
 import Yesod hiding (get)
 import Yesod.Admin.Types
 import Yesod.Admin.Class
+import Yesod.Admin.Message
 import Data.Default
 import Yesod.Routes.TH
 import Language.Haskell.TH
@@ -150,7 +151,8 @@ mkDispatchInstance context sub master res = instanceD context
 -- | Generate dispatch instance for @'Crud'@ subsite.
 dispatchCrud :: String -> String -> DecQ
 dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
-   where c   = cxt [ yp, pp, ps ]
+   where c   = cxt [yp, pp, ps, rm]
+         rm  = classP ''RenderMessage [ mT, conT ''AdminMessage ]
          yp  = classP ''YesodPersist [ mT ]
          pp  = classP ''PathPiece    [ key ]
          ps  = classP ''PersistStore [ yBackend, handler]
@@ -165,8 +167,9 @@ dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
 dispatchSelection :: String -> String -> DecQ
 dispatchSelection m v = mkDispatchInstance c selT mT
                                            selectionResources
-   where c   = cxt [yp, pp, ps, lc]
+   where c   = cxt [yp, pp, ps, lc, rm]
          lc  = classP ''LiftCrudRoutes [ mT, vT]
+         rm  = classP ''RenderMessage [ mT, conT ''AdminMessage ]
          yp  = classP ''YesodPersist [ mT ]
          pp  = classP ''PathPiece    [ key ]
          ps  = classP ''PersistQuery [ yBackend, handler]
