@@ -9,7 +9,7 @@ module Yesod.Admin.Types
        , Selection
        , SiteKey
        , SiteKVPair
-       , Action(..)
+       , DBAction(..)
        , CrudHandler
        , CrudWidget
        , SelectionHandler
@@ -58,9 +58,9 @@ type SiteKVPair master v = (SiteKey master v, v)
 -- | This types captures actions that can be applied from selection
 -- page.
 
-data Action b m v = ActionDelete            -- ^ A delete action
-                  | ActionUpdate (Update v) -- ^ An update action
-                  | ActionCustom { runCustomAction :: Key b v -> b m () }
+data DBAction b m v = DBDelete            -- ^ A delete action
+                    | DBUpdate (Update v) -- ^ An update action
+                    | DBCustom { runCustomAction :: Key b v -> b m () }
                                             -- ^ A custom action
 
 -- | A type alias for widgets of the admin subsite.

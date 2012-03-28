@@ -82,17 +82,17 @@ import Text.Hamlet
 
     This class captures objects that have an admin interface. The most
 important member of this class is the associated data type of this
-class are @'Attribute'@. An attribute an object can either be a
-database column of an object or might be a constructed entity. The
-former we call a /database attribute/ whereas the later we call a
-/derived attribute/. Each attribute also has a title which is used in
-the selection list of the object. The member function
+class are @'Attribute'@ and @'Action'@. An attribute of an object can
+either be a database column of an object or might be a constructed
+entity. The former we call a /database attribute/ whereas the later we
+call a /derived attribute/. Each attribute also has a title which is
+used in the selection list of the object. The member function
 @'attributeTitle'@ maps an attribute of a data type @`v`@ (of type
 @'Attribute' v@) to its title.
 
 Minimum complete definition of this class requires defining the
-associated type @'Attribute' v@, the variable @'dbAttributes'@ and the
-functions @'attributeTitle'@.
+associated types @'Attribute' v@ and @'Action' v@, the variable
+@'dbAttributes'@, @'attributeTitle'@ and @'dbAction'@
 
 
 -}
@@ -123,9 +123,14 @@ class ( Eq (Attribute v)
       -- database columns, they can be constructed ones as well.
       data Attribute v :: *
 
+      -- | Admin actions on this object.
+      data Action v    :: *
+
       -- | The title of the given attribute.
       attributeTitle :: Attribute v -> Text
 
+      -- | The db action associate with and admin action.
+      dbAction :: PersistStore b m => Action v -> DBAction b m v
 
       -- | The database attributes of the object.
       dbAttributes :: [Attribute v]
@@ -150,9 +155,6 @@ class ( Eq (Attribute v)
       objectsPerPage :: v -> Int
       objectsPerPage = const 20
 
-      -- | This variable returns what all admin actions allowed for this
-      -- data type. It is a list of action names and action values.
-      actions :: PersistStore b m => [(Text, Action b m v)]
 
 -- | The crud forms of the entity.
 class PersistEntity v => HasAdminForms v where
