@@ -33,30 +33,6 @@ undefinedObjectOf :: PersistEntity v
                   -> v
 undefinedObjectOf _ = undefined
 
-{-
--- | Get the type name associated with an object.
-typeName :: PersistEntity v
-         => v
-         -> String
-typeName = entityName
-
-
--- | Get the field name associated with an  EnitityField
-fieldName :: PersistEntity v
-          => v
-          -> Text
-          -> Text
-fieldName v fname = camelCaseUnwords [ unCapitalise $ entityName v
-                                     , fname
-                                     ]
--}
-{-
-entityColumn :: PersistEntity v
-             => EntityField v typ
-             -> String
-entityColumn = columnName . persistColumnDef
--}
-
 -- | Create an instance declaration.
 mkInstance :: [PredQ] -> Name -> [TypeQ] -> [DecQ] -> DecQ
 mkInstance context cls args defs = instanceD (cxt context) inst defs
