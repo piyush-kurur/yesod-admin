@@ -14,21 +14,18 @@ module Yesod.Admin.TH.Entity
        -- * Admin section.
        -- $adminsection
 
-       -- * Attribute naming
-       -- $attributeNameAndTitle
-
-       -- * Attribute title and constructors.
-       -- $attributetitleandconstructors
-
-       -- * Helper functions.
+       -- * Attributes
+       -- $attributeName
+       -- ** Attribute constructors.
+       -- $attributeconstructors
          AdminInterface(..)
-       , mkAdminClasses
-       -- * Low level Template haskell functions.
-       -- $lowlevel
-       , entityDefToInterface
+       -- , mkAdminClasses
+       -- , entityDefToInterface
+       {-
        , deriveAdministrable
        , deriveInlineDisplay
        , deriveAttributeDisplay
+       -}
        ) where
 
 import Data.Char
@@ -68,37 +65,27 @@ type Map = M.Map
 --
 -- The allowed fields are:
 --
--- [@inline@] Attribute used in the inline display of the object. Should
---    occur only once in the admin section. There should be a single
---    parameter which is the name of the attribute (See the convention on
---    attribute naming). The default value is the first field in the entity
---    definition.
+-- [@action@] A list of allowed admin actions. Should occur at most
+--    once.
+-- [@inline@] Attribute used in the inline display of the
+--    object. Should occur at most once in the admin section. There
+--    should be a single parameter which is the name of the attribute
+--    (See the convention on attribute naming). The default value is
+--    the first field in the entity definition.
 --
 -- [@list@] A list of attributes used in the selection list display of
---    the objects. Should occur only once in the admin section. The
+--    the objects. Should occur at most once in the admin section. The
 --    parameter is the list of attribute and the ordering of the
---    attribute should be as required in the selection listing. The
---    default value is to use the same field as the inline display.
+--    attribute should be as required in the selection listing. Each
+--    database attribute is optionally prefixed by either a + or a -
+--    to indicate whether the selection should sort in increasing or
+--    decreasing order with respect to that attribute
+--    respectively. Default value is the same as inline display.
 --
--- [@plural@] The plural name for the object.
---
+-- 
 -- [@show@] The list of attributes that are shown on the read page of
 --    the object. This defaults to all the dbAttributes.
 --
--- [@sort@]. Controls how the values are sorted on the selection page.
---    The values should be dbEntries and nothing else. By default the
---    sorting is done based on the default sort associated with that
---    entry.
---
--- [@singular@] The singular name for the object.
---
--- [@title@] Used to override the default title of an attribute. The
---    first attribute is the attribute name and the rest of
---    paramenters form the title. There can be multiple title
---    definitions one for each attribute. The default title is the
---    uncamelcased version of the attribute name. For example
---    @fullName@ and @NameAndEmail@ have default titles as @\"Full
---    name\"@ and @\"Name and email\"@ respectively.
 
 -- | This datatype controls the admin site generate via the template
 -- haskell functions of this module. Having defined this type you can
@@ -106,60 +93,30 @@ type Map = M.Map
 -- tweak the access controls).
 
 data AdminInterface
-     = AdminInterface { name         :: Text  -- ^ Name of the entity
-                      , singular     :: Maybe Text   -- ^ The singular
-                                                     -- name
-                      , plural       :: Maybe Text   -- ^ The plural form
-                      , dbAttrs      :: [Text]
-                      , derivedAttrs :: [Text]
-                      , titles     :: Map Text Text
-                                   -- ^ The titles of each attribute.
-                                   -- ^ The key is attribute
-                                   -- constructor name and the value
-                                   -- is the title of the attribute.
-                      , inline     ::  Text
-                      -- ^ How to display the inline display of the
-                      -- object. It could either be a database column
-                      -- (a name that starts with lower case) or a
-                      -- constructed (a name that starts with upper
-                      -- case).
-                      , readPageAttrs :: Maybe [Text]
-                      -- ^ Attributes constructors to be shown on the
-                      -- read page.
-                      , selectionPageAttrs  :: Maybe [Text]
-                      -- ^ Ordered list of attribute constructors in
-                      -- the selection listing of the object.
-                      , sortOrder      :: Maybe [Text]
-                      -- ^ The order in which elements are sorted on
-                      -- the selection page.
+     = AdminInterface { name      :: Text
+                      , action    :: Maybe [Text]
+                      , inline    :: Maybe Text
+                      , list      :: Maybe [Text]
+                      , readPage  :: Maybe [Text]
+                      , dbAttrs   :: [Text]
                       } deriving Show
 
 defaultInterface :: EntityDef -> AdminInterface
 defaultInterface ed
-   = AdminInterface { name     = en
-                    , singular = Nothing
-                    , plural   = Nothing
-                    , dbAttrs  = dc
-                    , derivedAttrs = []
-                    , titles   = M.fromList ts
-                    , inline   = head fs
-                    , readPageAttrs      = Nothing
-                    , selectionPageAttrs = Nothing
-                    , sortOrder          = Nothing
+   = AdminInterface { name     = unHaskellName $ entityHaskell ed
+                    , action   = Nothing
+                    , inline   = Nothing
+                    , list     = Nothing
+                    , readPage = Nothing
+                    , dbAttrs  = das
                     }
-    where en = entityName ed
-          dc = map (constructor en) fs
-          fs = map (unHaskellName . fieldHaskell) $ entityFields ed
-          ts = zip dc $ map titleOf fs
+   where en  = unHaskellName $ entityHaskell ed
+         das = map (unHaskellName . fieldHaskell) $ entityFields ed
 
--- $attributetitleandconstructors
+{-
+-- $attributeconstructors
 --
--- The default attribute title for a attribute fooBarBiz is @\"Foo bar
--- biz\"@. I.e it is the uncamelcased version of the attribute
--- name. You can override setting the title field in the Admin section
--- of the object.
-
--- The TH code generates on constructor for each database entry plus
+-- The TH code generates one constructor for each database entry plus
 -- what ever constructed attributes are used in listings. The
 -- constructors are the following.
 --
@@ -207,7 +164,7 @@ entityDefToInterface ed = ai { titles = M.union (titles ai) defTitles }
          derived   = derivedAttrs ai
          defTitles = M.fromList $ zip derived $ map titleOf derived
 
--- $attributeNameAndTitle
+-- $attributeName
 -- Attributes can be either
 --
 --   1. A string that starts with an lower case letter e.g. @name@
@@ -223,6 +180,7 @@ entityDefToInterface ed = ai { titles = M.union (titles ai) defTitles }
 --   @('PersistEntity' v, 'PersistStore' b m) => v -> b m 'Text'@
 --
 --
+
 
 -- | This TH combinator derives the three classes @`Administrable`@
 -- @`InlineDisplay`@ and @`AttributeDisplay`@ for a persistent entity.
@@ -454,3 +412,5 @@ entityName = unHaskellName . entityHaskell
 
 mkEntityField :: Text -> Text -> ExpQ
 mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
+
+-}
