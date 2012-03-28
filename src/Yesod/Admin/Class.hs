@@ -102,7 +102,7 @@ class ( Eq (Attribute v)
       , Bounded (Attribute v)
       , PersistEntity v
       )
-       => Administrable v where
+      => Administrable v where
 
       -- | The name of the object. Used in various places for example
       -- in titles of admin pages. The default values is the entity
