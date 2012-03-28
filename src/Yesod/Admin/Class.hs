@@ -80,7 +80,7 @@ import Text.Hamlet
 
 {-|
 
-    This class captures objects that have an admin interface. The most
+This class captures objects that have an admin interface. The most
 important member of this class is the associated data type of this
 class are @'Attribute'@ and @'Action'@. An attribute of an object can
 either be a database column of an object or might be a constructed
@@ -91,8 +91,8 @@ used in the selection list of the object. The member function
 @'Attribute' v@) to its title.
 
 Minimum complete definition of this class requires defining the
-associated types @'Attribute' v@ and @'Action' v@, the variable
-@'dbAttributes'@, @'attributeTitle'@ and @'dbAction'@
+associated types @'Attribute' v@ and @'Action' v@ and variables
+@'dbAttributes'@ and @'dbAction'@.
 
 
 -}
@@ -104,20 +104,6 @@ class ( Eq (Attribute v)
       )
       => Administrable v where
 
-      -- | The name of the object. Used in various places for example
-      -- in titles of admin pages. The default values is the entity
-      -- name of the given persistent type.
-      objectSingular :: v -> Text
-      objectSingular = unCamelCase
-                     . unHaskellName
-                     . entityHaskell
-                     . entityDef
-
-      -- | The plural form of the object. By default an `s' is
-      -- appended to the singular form.
-      objectPlural  :: v -> Text
-      objectPlural  v = objectSingular v `append` "s"
-
       -- | Abstract attributes of the type. These attributes can
       -- appear in listings and access control. Besides the usual
       -- database columns, they can be constructed ones as well.
@@ -125,9 +111,6 @@ class ( Eq (Attribute v)
 
       -- | Admin actions on this object.
       data Action v    :: *
-
-      -- | The title of the given attribute.
-      attributeTitle :: Attribute v -> Text
 
       -- | The db action associate with and admin action.
       dbAction :: PersistStore b m => Action v -> DBAction b m v
