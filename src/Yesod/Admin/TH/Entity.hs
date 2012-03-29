@@ -66,7 +66,19 @@ type Map = M.Map
 -- The allowed fields are:
 --
 -- [@action@] A list of allowed admin actions. Should occur at most
---    once.
+--    once. The words in the the list should contain either (1) the
+--    word "delete" (delete) (2) a word starting with a small case
+--    letter (update action) or (3) a word starting with a upper case
+--    letter (a custom action). The textual representation is obtained
+--    by taking the un-camelcased version of the name.  E.g.  a line
+--    of the form @action delete confirmRegistration Bar@ means that
+--    the object supports delete, an update action titled "Confirm
+--    registration" give by the variable confirmRegistration and a
+--    custom action @Bar@ given by the variable @bar@. Here bar shold
+--    have the type $Key b v -> b m v$
+--    
+-- 
+--                  
 -- [@inline@] Attribute used in the inline display of the
 --    object. Should occur at most once in the admin section. There
 --    should be a single parameter which is the name of the attribute
@@ -84,7 +96,7 @@ type Map = M.Map
 --
 -- 
 -- [@show@] The list of attributes that are shown on the read page of
---    the object. This defaults to all the dbAttributes.
+--    the object. This defaults to all the database attributes.
 --
 
 -- | This datatype controls the admin site generate via the template
@@ -113,6 +125,130 @@ defaultInterface ed
    where en  = unHaskellName $ entityHaskell ed
          das = map (unHaskellName . fieldHaskell) $ entityFields ed
 
+
+entityDefToInterface :: EntityDef -> Either String AdminInterface
+entityDefToInterface ed = do ai <- setFields
+                             chk ai
+   where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
+         fld eai (x:xs) = fieldSet eai x xs
+         fld eai []     = eai
+         setFields      = foldl fld (Right $ defaultInterface ed) adminLines
+         chk ai | null errs = Right ai
+                | otherwise = Left  $ unlines errs
+                where errs = checkAdminFields ai
+
+
+fieldSet :: Either String AdminInterface
+         -> Text
+         -> [Text]
+         -> Either String AdminInterface
+
+fieldSet eai "action" ts  = setAction eai ts
+fieldSet eai "list"   ts  = setList eai ts
+fieldSet eai "show"   ts  = setReadPage eai ts
+fieldSet eai "inline" []  = Left "inline: empty definition"
+fieldSet eai "inline" [t] = setInline eai t
+fieldSet eai "inline" _   = Left "inline: too many args" 
+fieldSet _   f        _   = Left (T.unpack f ++ ": unknown field")
+
+
+{-
+
+Developer notes
+---------------
+
+The setters check for multiple definitions and flag an error. The
+checkers check for overall consistency. The overall consistency check
+that one can do is to check that every attribute name given in the
+Admin section that starts with a small letter should be a
+dbAttribute. This should be checked for in inline, list and show
+fields.
+
+-}
+
+
+
+type Result = Either String AdminInterface
+
+checkAdminFields :: AdminInterface -> [String]
+checkAdminFields ai = combineErrs (T.unpack $ name ai)
+                             $ concat [ inlineC
+                                      , listC
+                                      , rPC
+                                      ]
+     where inlineC = chk "inline: "
+                         $ maybeToList $ inline ai 
+           listC   = chk "list" $ map unSort $ fromMaybe [] $ list ai
+           rPC     = chk "show" $ fromMaybe [] $ readPage ai
+           chk msg = combineErrs msg . checkDBAttrs ai
+
+checkDBAttr :: AdminInterface -> Text -> [String]
+checkDBAttr ai attr | isDerived attr            = []
+                    | attr `elem` dbAttrs ai    = []
+                    | otherwise = [ unwords [ T.unpack attr
+                                            , " unknown database attribute"
+                                            ]
+                                  ]
+
+checkDBAttrs :: AdminInterface -> [Text] -> [String]
+checkDBAttrs ai = concatMap (checkDBAttr ai)
+
+combineErrs :: String -> [String] -> [String]
+combineErrs tag []     = []
+combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
+         where f = tag ++ ": " ++ x
+               l = length tag + 2
+               indent len = (++) $ replicate len ' '
+
+           
+
+unSort :: Text -> Text
+unSort t | T.head t == '+' = T.tail t
+         | T.head t == '-' = T.tail t
+         | otherwise      = t
+
+
+
+
+setAction :: Result -> [Text] -> Result
+setAction = setOnce action (\ ai x -> ai { action = Just x })
+                    "action: multiple definitions"
+
+setInline :: Result -> Text -> Result
+setInline = setOnce inline (\ ai x -> ai { inline = Just x })
+                    "inline: multiple definitions"
+
+setList :: Result -> [Text] -> Result
+setList = setOnce list (\ ai x -> ai { list = Just x })
+                    "List: multiple definitions"
+
+setReadPage :: Result -> [Text] -> Result
+setReadPage = setOnce readPage (\ ai x -> ai { readPage = Just x })
+                    "show: multiple definitions"
+
+
+setOnce :: (b -> Maybe x)
+        -> (b -> x -> b)
+        -> a
+        -> Either a b
+        -> x
+        -> Either a b
+setOnce g p a eb x = do b <- eb
+                        maybe (Right $ p b x) (const $ Left a) $ g b
+
+
+isDerived :: Text -> Bool
+isDerived = isUpper . T.head
+isDB      :: Text -> Bool
+isDB      = isLower . T.head
+
+{-
+setOnce g p a (Right b) x = maybe (Right $ p b x) (const $ Left a) $ g b
+setOnce _   _   _ leftB     _ = leftB
+
+-}
+
+
 {-
 -- $attributeconstructors
 --
@@ -130,9 +266,6 @@ defaultInterface ed
 --     capitalised. For example if the function name is
 --     @nameAndEmail@, the constructor will be @NameAndEmail@
 --
-
-isDerived :: Text -> Bool
-isDerived = isUpper . T.head
 
 
 titleOf       :: Text  -- ^ Attribute name
@@ -158,11 +291,6 @@ dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $
                       init $ tail $ unCamelCaseWords t
 
 
-entityDefToInterface :: EntityDef -> AdminInterface
-entityDefToInterface ed = ai { titles = M.union (titles ai) defTitles }
-   where ai        = procAdminSection ed
-         derived   = derivedAttrs ai
-         defTitles = M.fromList $ zip derived $ map titleOf derived
 
 -- $attributeName
 -- Attributes can be either
@@ -360,36 +488,9 @@ in your main routes file.
 
 -}
 
-fieldSetter :: AdminInterface -> [Text] -> AdminInterface
-fieldSetter ai line
-   | null line = ai
-   | otherwise = case field of
-                      "inline"   -> ai { inline   = head args              }
-                      "list"     -> ai { selectionPageAttrs = Just argCons
-                                       , derivedAttrs = derivedAttrs ai
-                                                        `union` newAttrs
-                                       }
-                      "plural"   -> ai { plural   = Just $ T.unwords args   }
-                      "singular" -> ai { singular = Just $ T.unwords args   }
-                      "show"     -> ai { readPageAttrs = Just argCons
-                                       , derivedAttrs = derivedAttrs ai
-                                                        `union` newAttrs
-                                       }
-                      "sort"     -> ai { sortOrder = Just args }
-                      "title"    -> setTitle
-   where field       = head line
-         args        = tail line
-         en          = name ai
-         argCons     = map (constructor en) args
-         newAttrs    = map (constructor en) $ filter isDerived args
-         setTitle    = ai { titles = M.insert (constructor en (head args))
-                                              (T.unwords $ tail args)
-                                              $ titles ai
-                          }
-
 procAdminSection :: EntityDef -> AdminInterface
 procAdminSection ed = foldl fieldSetter (defaultInterface ed) adminLines
-    where adminLines = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
+    where 
 
 
 textFun :: Name -> Text -> DecQ
