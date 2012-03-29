@@ -21,9 +21,10 @@ module Yesod.Admin.TH.Entity
          AdminInterface(..)
        -- , mkAdminClasses
        -- , entityDefToInterface
+       , deriveInlineDisplay
        {-
        , deriveAdministrable
-       , deriveInlineDisplay
+       
        , deriveAttributeDisplay
        -}
        ) where
@@ -152,6 +153,36 @@ fieldSet eai "inline" _   = Left "inline: too many args"
 fieldSet _   f        _   = Left (T.unpack f ++ ": unknown field")
 
 
+-- | Derive an instance of `InlineDisplay` for an entity give its
+-- administrative interface.
+deriveInlineDisplay  :: AdminInterface -> DecsQ
+
+-- | Similar to `deriveInlineDisplay` but does not wrap the
+-- declaration inside a list. Not very useful in the wild as splicing
+-- expects `DecsQ` instead `DecQ` but useful in defining other
+-- template haskell function. Currently not exported
+deriveInlineDisplay' :: AdminInterface
+                     -> DecQ
+deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
+deriveInlineDisplay' ai =
+               mkInstance [persistStoreP b m]
+                          ''InlineDisplay [b, m, persistType en b]
+                          instBody
+     where b     = varT $ mkName "b"
+           m     = varT $ mkName "m"
+           en    = name ai
+           attr  = fromMaybe (head $ dbAttrs ai) $ inline ai 
+           body = normalB $ displayRHS en attr
+           instBody = [valD (varP 'inlineDisplay) body []]
+
+displayRHS :: Text
+           -> Text
+           -> ExpQ
+displayRHS en at | isDerived at = varE $ mkNameT $ unCapitalise at
+                 | otherwise    = let fname = varE $ mkNameT
+                                                   $ fieldName en at
+                                      in [| inlineDisplay . $fname |]
+
 {-
 
 Developer notes
@@ -237,10 +268,32 @@ setOnce g p a eb x = do b <- eb
                         maybe (Right $ p b x) (const $ Left a) $ g b
 
 
+-- $attributeName
+-- Attributes can be either
+--
+--   1. A string that starts with an lower case letter e.g. @name@
+--   in which case it is one of the fields of the Persistent entity.
+--
+--   2. A string that starts with a upper case letter
+--   e.g. @NameAndEmail@ in which case it denotes a function which
+--   when applied to the objects returns the displayed string. The
+--   function name is obtained by converting the first character of
+--   the name into lower case (i.e @fooBar@ for an attribute @FooBar@).
+--   The type of the function should be.
+--
+--   @('PersistEntity' v, 'PersistStore' b m) => v -> b m 'Text'@
+--
+--
+
 isDerived :: Text -> Bool
 isDerived = isUpper . T.head
 isDB      :: Text -> Bool
 isDB      = isLower . T.head
+
+
+fieldName :: Text -> Text -> Text
+fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
+
 
 {-
 setOnce g p a (Right b) x = maybe (Right $ p b x) (const $ Left a) $ g b
@@ -292,22 +345,6 @@ dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $
 
 
 
--- $attributeName
--- Attributes can be either
---
---   1. A string that starts with an lower case letter e.g. @name@
---   in which case it is one of the fields of the Persistent entity.
---
---   2. A string that starts with a upper case letter
---   e.g. @NameAndEmail@ in which case it denotes a function which
---   when applied to the objects returns the displayed string. The
---   function name is obtained by converting the first character of
---   the name into lower case (i.e @fooBar@ for an attribute @FooBar@).
---   The type of the function should be.
---
---   @('PersistEntity' v, 'PersistStore' b m) => v -> b m 'Text'@
---
---
 
 
 -- | This TH combinator derives the three classes @`Administrable`@
@@ -347,28 +384,6 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                     , defSelectionPageSort ai
                                     ]
 
--- | Derive an instance of `InlineDisplay` for an entity give its
--- administrative interface.
-
-deriveInlineDisplay  :: AdminInterface
-                     -> DecsQ
--- | Similar to `deriveInlineDisplay` but does not wrap the
--- declaration inside a list. Not very useful in the wild as splicing
--- expects `DecsQ` instead `DecQ` but useful in defining other
--- template haskell function. Currently not exported
-
-deriveInlineDisplay' :: AdminInterface
-                     -> DecQ
-deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
-deriveInlineDisplay' ai =
-               mkInstance [persistStoreP b m]
-                          ''InlineDisplay [b, m, persistType en b]
-                          instBody
-     where b     = varT $ mkName "b"
-           m     = varT $ mkName "m"
-           en    = name ai
-           body = normalB $ displayRHS en $ inline ai
-           instBody = [valD (varP 'inlineDisplay) body []]
 
 -- | Derive an instance of `AttributeDisplay` for an entity give its
 -- administrative interface.
@@ -397,12 +412,6 @@ deriveAttributeDisplay' ai
                     where body = normalB $ displayRHS en at
 
 
-displayRHS :: Text
-           -> Text
-           -> ExpQ
-displayRHS en at | isDerived at = varE $ mkNameT $ unCapitalise at
-                 | otherwise    = let fname = varE $ mkNameT $ fieldName en at
-                                      in [| inlineDisplay . $fname |]
 
 
 defObjectSingular :: AdminInterface -> Maybe DecQ
@@ -505,8 +514,6 @@ constructorP e attr = conP (mkNameT $ constructor e attr) []
 
 
 
-fieldName :: Text -> Text -> Text
-fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
 
 entityName :: EntityDef -> Text
 entityName = unHaskellName . entityHaskell
