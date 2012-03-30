@@ -29,10 +29,9 @@ module Yesod.Admin.TH.Entity
        -- , mkAdminClasses
        -- , entityDefToInterface
        , deriveInlineDisplay
+       , deriveAttributeDisplay
        {-
        , deriveAdministrable
-       
-       , deriveAttributeDisplay
        -}
        ) where
 
@@ -116,6 +115,7 @@ data AdminInterface
                       , list      :: Maybe [Text]
                       , readPage  :: Maybe [Text]
                       , dbAttrs   :: [Text]
+                      , derivedAttrs :: [Text]
                       } deriving Show
 
 defaultInterface :: EntityDef -> AdminInterface
@@ -126,18 +126,23 @@ defaultInterface ed
                     , list     = Nothing
                     , readPage = Nothing
                     , dbAttrs  = das
+                    , derivedAttrs = []
                     }
    where en  = unHaskellName $ entityHaskell ed
          das = map (unHaskellName . fieldHaskell) $ entityFields ed
 
 
 entityDefToInterface :: EntityDef -> Either String AdminInterface
-entityDefToInterface ed = do ai <- setFields
-                             chk ai
+entityDefToInterface ed = do ai    <- setFields
+                             aichk <- chk ai
+                             return $ aichk {derivedAttrs = derAttrs aichk }
    where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
          fld eai (x:xs) = fieldSet eai x xs
          fld eai []     = eai
          setFields      = foldl fld (Right $ defaultInterface ed) adminLines
+         derAttrs ai    = filter isDerived (lstAttrs ai ++ rpAttrs ai)
+         lstAttrs ai    = map unSort $ fromMaybe [] $ list ai
+         rpAttrs  ai    = fromMaybe [] $ readPage ai
          chk ai | null errs = Right ai
                 | otherwise = Left  $ unlines errs
                 where errs = checkAdminFields ai
@@ -151,9 +156,9 @@ fieldSet :: Either String AdminInterface
 fieldSet eai "action" ts  = setAction eai ts
 fieldSet eai "list"   ts  = setList eai ts
 fieldSet eai "show"   ts  = setReadPage eai ts
-fieldSet eai "inline" []  = Left "inline: empty definition"
+fieldSet _   "inline" []  = Left "inline: empty definition"
 fieldSet eai "inline" [t] = setInline eai t
-fieldSet eai "inline" _   = Left "inline: too many args" 
+fieldSet _ "inline"   _   = Left "inline: too many args" 
 fieldSet _   f        _   = Left (T.unpack f ++ ": unknown field")
 
 
@@ -179,10 +184,35 @@ deriveInlineDisplay' ai =
            body = normalB $ displayRHS en attr
            instBody = [valD (varP 'inlineDisplay) body []]
 
+
+-- | Derive an instance of `AttributeDisplay` for an entity give its
+-- administrative interface.
+deriveAttributeDisplay :: AdminInterface
+                       -> DecsQ
+deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
+
+-- | Same as `deriveAttributeDisplay` but does not wrap the
+-- declaration inside a list. Not very useful in the wild as splicing
+-- expects `DecsQ` instead `DecQ` but useful in defining other
+-- template haskell function. Currently not exported
+deriveAttributeDisplay' :: AdminInterface
+                        -> DecQ
+deriveAttributeDisplay' ai
+            = mkInstance [persistStoreP b m]
+                    ''AttributeDisplay [b, m, persistType en b]
+                    instBody
+     where b  = varT $ mkName "b"
+           m  = varT $ mkName "m"
+           en = name ai
+           ats = dbAttrs ai ++ derivedAttrs ai
+           instBody = [ funD 'attributeDisplay $ map mkClause ats ]
+           mkClause at = clause [constructorP en at] body []
+                    where body = normalB $ displayRHS en at
+
 displayRHS :: Text
            -> Text
            -> ExpQ
-displayRHS en at | isDerived at = varE $ mkNameT $ unCapitalise at
+displayRHS en at | isDerived at = varE $ mkNameT $ funcName at
                  | otherwise    = let fname = varE $ mkNameT
                                                    $ fieldName en at
                                       in [| inlineDisplay . $fname |]
@@ -298,6 +328,9 @@ isDB      = isLower . T.head
 fieldName :: Text -> Text -> Text
 fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
 
+funcName :: Text -> Text
+funcName =  unCapitalise 
+
 
 {-
 setOnce g p a (Right b) x = maybe (Right $ p b x) (const $ Left a) $ g b
@@ -306,32 +339,28 @@ setOnce _   _   _ leftB     _ = leftB
 -}
 
 
-{-
--- $attributeconstructors
+
+-- $attributeConstructors
 --
 -- The TH code generates one constructor for each database entry plus
--- what ever constructed attributes are used in listings. The
+-- what ever constructed attributes are used in list field. The
 -- constructors are the following.
 --
---  1. For a database attribute it is represented by camel cased
---     concatenation of the entity name, the attribute name and the
---     string Attribute. For example the database column @name@ of
---     entity Person will give a constructor @PersonNameAttribute@
+--  1. For a database attribute the constructor is camel cased
+--  concatenation of the entity name, the attribute name and the
+--  string "Attribute". For example the database column @name@ of
+--  entity Person will give a constructor @PersonNameAttribute@
 --
 --  2. For a constructed attribute corresponding to a function, the
---     constructor will be the function name with the first letter
---     capitalised. For example if the function name is
---     @nameAndEmail@, the constructor will be @NameAndEmail@
+--  constructor will be the function name with the first letter
+--  capitalised. For example if the function name is @nameAndEmail@,
+--  the constructor will be @NameAndEmail@
 --
 
-
-titleOf       :: Text  -- ^ Attribute name
-              -> Text
 constructor   :: Text    -- ^ Entity name
               -> Text    -- ^ Attribute name
               -> Text
 
-titleOf = capitalise . unCamelCase
 constructor en attr
    | T.null    attr    = T.empty
    | isDerived attr    = capitalise attr
@@ -339,6 +368,10 @@ constructor en attr
                                                        , attr
                                                        , "Attribute"
                                                        ]
+
+constructorP   :: Text -> Text -> PatQ
+constructorP e attr = conP (mkNameT $ constructor e attr) []
+
 
 {-
 -- FIXME: Write a Quick check test to check dbAttrToFieldName
@@ -390,31 +423,6 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                     ]
 
 
--- | Derive an instance of `AttributeDisplay` for an entity give its
--- administrative interface.
-
-deriveAttributeDisplay :: AdminInterface
-                       -> DecsQ
-deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
-
--- | Same as `deriveAttributeDisplay` but does not wrap the
--- declaration inside a list. Not very useful in the wild as splicing
--- expects `DecsQ` instead `DecQ` but useful in defining other
--- template haskell function. Currently not exported
-
-deriveAttributeDisplay' :: AdminInterface
-                        -> DecQ
-deriveAttributeDisplay' ai
-            = mkInstance [persistStoreP b m]
-                    ''AttributeDisplay [b, m, persistType en b]
-                    instBody
-     where b  = varT $ mkName "b"
-           m  = varT $ mkName "m"
-           en = name ai
-           ats = map dbAttrToFieldName (dbAttrs ai) ++ derivedAttrs ai
-           instBody = [ funD 'attributeDisplay $ map mkClause ats ]
-           mkClause at = clause [constructorP en at] body []
-                    where body = normalB $ displayRHS en at
 
 
 
@@ -514,8 +522,6 @@ textFun f t = funD f [rhs []]
 
 -- constructorE   :: Text -> Text -> ExpQ
 -- constructorE e attr = conE $ mkNameT $ constructor e attr
-constructorP   :: Text -> Text -> PatQ
-constructorP e attr = conP (mkNameT $ constructor e attr) []
 
 
 
