@@ -128,8 +128,7 @@ defaultInterface ed
                     , dbAttrs  = das
                     , derivedAttrs = []
                     }
-   where en  = unHaskellName $ entityHaskell ed
-         das = map (unHaskellName . fieldHaskell) $ entityFields ed
+   where das = map (unHaskellName . fieldHaskell) $ entityFields ed
 
 
 entityDefToInterface :: EntityDef -> Either String AdminInterface
@@ -259,7 +258,7 @@ checkDBAttrs :: AdminInterface -> [Text] -> [String]
 checkDBAttrs ai = concatMap (checkDBAttr ai)
 
 combineErrs :: String -> [String] -> [String]
-combineErrs tag []     = []
+combineErrs _   []     = []
 combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
          where f = tag ++ ": " ++ x
                l = length tag + 2
