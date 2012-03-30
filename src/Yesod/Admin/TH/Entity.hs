@@ -12,12 +12,19 @@ Module to generate admin code for persistent entries.
 module Yesod.Admin.TH.Entity
        (
        -- * Admin section.
-       -- $adminsection
+       -- $adminSection
+       -- ** Allowed fields.
+       -- $adminFields
 
        -- * Attributes
        -- $attributeName
        -- ** Attribute constructors.
-       -- $attributeconstructors
+       -- $attributeConstructors
+       -- * Admin Actions.
+       -- $actionNames
+       -- ** Action constructors.
+       -- $actionConstructors
+
          AdminInterface(..)
        -- , mkAdminClasses
        -- , entityDefToInterface
@@ -44,7 +51,7 @@ import Yesod.Admin.Class
 type Text = T.Text
 type Map = M.Map
 
--- $adminsection
+-- $adminSection
 -- To define the admin interface for a persistent objects one needs to
 -- define and admin section in the persistent object definition For
 -- example look at the definition of person in the following code.
@@ -63,9 +70,8 @@ type Map = M.Map
 --
 -- In the above code snippet, we have defined the /fields/ @inline@,
 -- @list@ and @title@.
---
--- The allowed fields are:
---
+
+-- $adminFields
 -- [@action@] A list of allowed admin actions. Should occur at most
 --    once. The words in the the list should contain either (1) the
 --    word "delete" (delete) (2) a word starting with a small case
@@ -78,8 +84,6 @@ type Map = M.Map
 --    custom action @Bar@ given by the variable @bar@. Here bar shold
 --    have the type $Key b v -> b m v$
 --    
--- 
---                  
 -- [@inline@] Attribute used in the inline display of the
 --    object. Should occur at most once in the admin section. There
 --    should be a single parameter which is the name of the attribute
@@ -90,12 +94,12 @@ type Map = M.Map
 --    the objects. Should occur at most once in the admin section. The
 --    parameter is the list of attribute and the ordering of the
 --    attribute should be as required in the selection listing. Each
---    database attribute is optionally prefixed by either a + or a -
---    to indicate whether the selection should sort in increasing or
---    decreasing order with respect to that attribute
---    respectively. Default value is the same as inline display.
+--    /database attribute/ (refer attribute naming converntion) is
+--    optionally prefixed by either a + or a - to indicate whether the
+--    selection should sort in increasing or decreasing order with
+--    respect to that attribute respectively. Default value is the
+--    single attribute that matches the inline display of the object.
 --
--- 
 -- [@show@] The list of attributes that are shown on the read page of
 --    the object. This defaults to all the database attributes.
 --
@@ -232,7 +236,7 @@ combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
                indent len = (++) $ replicate len ' '
 
            
-
+-- | Get rid of the sorting rule from an attribute name.
 unSort :: Text -> Text
 unSort t | T.head t == '+' = T.tail t
          | T.head t == '-' = T.tail t
@@ -336,6 +340,7 @@ constructor en attr
                                                        , "Attribute"
                                                        ]
 
+{-
 -- FIXME: Write a Quick check test to check dbAttrToFieldName
 -- (constructer e x) = x where ever x starts with a lower case
 -- alphabet.
