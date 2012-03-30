@@ -59,6 +59,6 @@ Library
                , yesod-auth >=1.0 && <1.1
                , yesod-form >=1.0 && <1.1
                , yesod-routes >= 1.0 && < 1.1
-               , shakespeare-css >=0.10 && <0.11
-               , hamlet >=0.10 && <0.11
+               , shakespeare-css >=1.0 && <1.1
+               , hamlet >=1.0 && <1.1
                , persistent >=0.9 && <0.10
