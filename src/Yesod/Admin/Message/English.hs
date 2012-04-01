@@ -26,13 +26,3 @@ render MsgAdminConfirm = "Confirm"
 render MsgAdminCancel  = "Cancel"
 render MsgAdminLogin   = "Login"
 render MsgAdminLogout  = "Logout"
-render (MsgAdminObjectRange s e t) = T.unwords [ showT s
-                                               , "to"
-                                               , showT e
-                                               , "of"
-                                               , showT t
-                                               , objs
-                                               ]
-   where showT = T.pack . show 
-         objs  = if t /= 0 then "objects"
-                 else "object"
