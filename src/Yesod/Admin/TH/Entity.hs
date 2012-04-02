@@ -43,6 +43,7 @@ import Data.Maybe
 import Language.Haskell.TH
 import Database.Persist.EntityDef
 import Yesod
+import Yesod.Admin.Types
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
@@ -331,6 +332,40 @@ funcName :: Text -> Text
 funcName =  unCapitalise 
 
 
+-- $ActionName
+--
+-- The action field of an persistent entity can contain a list of one
+-- or more action names. An action name can be one of the following:
+--   
+--   1. The string "delete" that captures the delete action.
+--
+--   2. A string that starts with an lower case letter e.g. @confirm@
+--   in which case it is an update action. For such an action, there
+--   should be an appropriate update defined within the scope where
+--   the TH code is called. For e.g. if one uses the string @confirm@
+--   in the action field of the entity @Registration@ say, then one
+--   needs to define the function @registrationConfirmUpdate@ of type
+--   @Update Registration@.
+--
+--   3. A string that starts with a upper case letter e.g. @FooBar@ in
+--   which case it denotes a custom action. There should also be a
+--   function with the name @fooBar@ in this case, of type @Key b v ->
+--   b m v@.
+--
+-- The drop down menu in the selection list will list each action in
+-- the same order as given in the action field.
+
+isDelete :: Text -> Bool
+isUpdate :: Text -> Bool
+isCustomAction :: Text -> Bool
+
+isDelete  = (==) "delete"
+isUpdate  = isLower . T.head
+isCustomAction = isUpper . T.head
+
+
+
+
 {-
 setOnce g p a (Right b) x = maybe (Right $ p b x) (const $ Left a) $ g b
 setOnce _   _   _ leftB     _ = leftB
@@ -371,6 +406,55 @@ constructor en attr
 constructorP   :: Text -> Text -> PatQ
 constructorP e attr = conP (mkNameT $ constructor e attr) []
 
+-- $actionConstructors
+--
+-- The TH code generates one constructor for each administrative
+-- action. The constructors are the following.
+--
+--  1. For the delete action the constructor is camel cased
+--  concatenation of the entity name, the string "Delete" and the
+--  string "Action. E.g. @PersonDeleteAction@ for the entity @Person@.
+
+--  2. For the update action it is camel cased concatenation of the
+--  entity name, name of the update and the string "Update". E.g
+--  @RegistrationConfirmUpdate@ for the update @confirm@ of the entity
+--  @Registration@.
+--
+--  3. For a custom action @FooBar@, the constructor will the action
+--  name itself.
+--
+
+actionCons  :: Text    -- ^ Entity name
+            -> Text    -- ^ Action name
+            -> Text
+actionCons en act
+   | T.null    act   = T.empty
+   | act == "delete" = camelCaseUnwords [ en
+                                           , "Delete"
+                                           , "Action"
+                                           ]
+   | isUpdate act    = camelCaseUnwords [ en
+                                        , act
+                                        , "Update"
+                                        ]
+   | otherwise       = act
+
+actionConsP  :: Text -> Text -> PatQ
+actionConsP e attr = conP (mkNameT $ constructor e attr) []
+
+actionRHS :: Text -> Text -> ExpQ
+actionRHS en act | act == "delete" = conE 'DBDelete
+                 | isUpdate act    = conE 'DBUpdate `appE` updateExp
+                 | otherwise       = conE 'DBCustom `appE` customExp
+    where updateExp = varE $ mkNameT $ unCapitalise $ actionCons en act
+          customExp = varE $ mkNameT act
+
+defDBAction :: AdminInterface
+            -> DecQ
+defDBAction ai = singleArgFunc 'dbAction
+                 $ [ (actionConsP en  act, actionRHS en act) | act <- acts ]
+    where acts   = fromMaybe ["delete"] $ action ai
+          en     = name ai
 
 {-
 -- FIXME: Write a Quick check test to check dbAttrToFieldName
