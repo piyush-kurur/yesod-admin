@@ -100,6 +100,7 @@ associated types @'Attribute' v@ and @'Action' v@ and variables
 class ( Eq (Attribute v)
       , Enum (Attribute v)
       , Bounded (Attribute v)
+      , Enum (Action v)
       , PersistEntity v
       )
       => Administrable v where
