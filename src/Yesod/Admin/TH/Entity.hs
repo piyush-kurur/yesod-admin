@@ -209,6 +209,94 @@ deriveAttributeDisplay' ai
            mkClause at = clause [constructorP en at] body []
                     where body = normalB $ displayRHS en at
 
+-- | Derive an instance of @`Administrable`@ for the type @v@ given
+-- the AdminInterface for @v@.
+
+deriveAdministrable  :: AdminInterface
+                     -> DecsQ
+deriveAdministrable' :: AdminInterface
+                     -> DecQ
+deriveAdministrable  = fmap (:[]) . deriveAdministrable'
+
+deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
+                                     $ instBody
+      where b        = varT $ mkName "b"
+            en       = name ai
+            instBody = [ defAttribute ai   b
+                       , defAction ai b
+                       , defDBAttrs   ai
+                       , defDBAction  ai
+                       ]
+                       ++ catMaybes [ defSelectionAttrs ai
+                                    , defReadAttrs      ai
+                                    , defSelectionPageSort ai
+                                    ]
+
+-- | Define the attribute data type.
+defAttribute :: AdminInterface      -- ^ Entity name
+             -> TypeQ               -- ^ Backend
+             -> DecQ
+
+defAttribute ai = defAssocType ''Attribute cons
+                               [''Eq, ''Enum, ''Bounded]
+                               ai
+     where cons = map (constructor en) ats
+           en   = name ai
+           ats  = dbAttrs ai ++ derivedAttrs ai
+
+
+-- | Define the Action data type.
+defAction :: AdminInterface    -- ^ Entity name
+          -> TypeQ             -- ^ Backend
+          -> DecQ
+
+defAction ai   = defAssocType ''Action cons [''Enum] ai 
+    where cons = map (actionCons en) $ fromMaybe ["delete"] $ action ai
+          en   = name ai
+
+defAssocType :: Name           -- ^ Name of the associate.
+             -> [Text]         -- ^ Constructors.
+             -> [Name]         -- ^ deriving which basic classes.
+             -> AdminInterface -- ^ The interface
+             -> TypeQ          -- ^ The backend.
+             -> DecQ
+             
+            
+defAssocType n cons clss ai b = dataInstD (cxt []) n [persistType en b]
+                                      alts clss
+      where en   = name ai
+            alts = [ normalC c [] | c <- map mkNameT cons ]
+            
+
+defDBAttrs        :: AdminInterface -> DecQ
+defDBAttrs        = defListVar 'dbAttributes . dbAttrs
+
+defSelectionAttrs :: AdminInterface -> Maybe DecQ
+defReadAttrs      :: AdminInterface -> Maybe DecQ
+
+defSelectionAttrs = fmap (defListVar 'selectionPageAttributes)
+                         . fmap (map unSort) . list
+
+defReadAttrs      = fmap (defListVar 'readPageAttributes)
+                         . readPage
+
+defSelectionPageSort :: AdminInterface
+                     -> Maybe DecQ
+defSelectionPageSort ai = fmap (defsps $ name ai) $ list ai
+
+defsps :: Text -> [Text] -> DecQ
+defsps en fs = valD spsVar body []
+    where body   = normalB $ listE $ catMaybes $ map sortOpt fs
+          spsVar = varP 'selectionPageSort
+          asc  = Just . appE (conE 'Asc)
+          desc = Just . appE (conE 'Desc)
+          sortOpt f | T.head f   == '-' = desc $ mkEntityField en $ T.tail f
+                    | T.head f   == '+' = asc  $ mkEntityField en $ T.tail f
+                    | otherwise         = Nothing
+
+mkEntityField :: Text -> Text -> ExpQ
+mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
+
 displayRHS :: Text
            -> Text
            -> ExpQ
@@ -216,6 +304,12 @@ displayRHS en at | isDerived at = varE $ mkNameT $ funcName at
                  | otherwise    = let fname = varE $ mkNameT
                                                    $ fieldName en at
                                       in [| inlineDisplay . $fname |]
+
+defListVar :: Name -> [Text] -> DecQ
+defListVar v es = valD var body []
+   where var  = varP v
+         body = normalB . listE $ map (conE . mkNameT) es
+
 
 {-
 
@@ -480,30 +574,6 @@ mkAdminClasses = sequence . concatMap mapper
           mapper   = mkAC . entityDefToInterface
 
 
--- | Derive an instance of @`Administrable`@ for the type @v@ given
--- the AdminInterface for @v@.
-
-deriveAdministrable  :: AdminInterface
-                     -> DecsQ
-deriveAdministrable' :: AdminInterface
-                     -> DecQ
-deriveAdministrable  = fmap (:[]) . deriveAdministrable'
-
--- FIXME: Find a way to set the listSort option.
-deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
-                                     $ instBody
-      where b        = varT $ mkName "b"
-            en       = name ai
-            instBody = [ defDBAttrs   ai
-                       , defAttribute ai   b
-                       , defAttributeTitle ai
-                       ]
-                       ++ catMaybes [ defObjectSingular ai
-                                    , defObjectPlural   ai
-                                    , defSelectionAttrs ai
-                                    , defReadAttrs      ai
-                                    , defSelectionPageSort ai
-                                    ]
 
 
 
@@ -517,17 +587,6 @@ defObjectSingular = fmap (textFun 'objectSingular) . singular
 defObjectPlural   = fmap (textFun 'objectPlural) . plural
 
 
--- | Define the attribute data type.
-defAttribute :: AdminInterface      -- ^ Entity name
-             -> TypeQ               -- ^ Backend
-             -> DecQ
-
-defAttribute ai b = dataInstD (cxt []) ''Attribute [persistType en b]
-                              cons [''Eq, ''Enum, ''Bounded]
-    where cons   = map  mkConQ cs
-          en     = name ai
-          mkConQ = flip normalC [] . mkNameT
-          cs     = M.keys $ titles ai
 
 defAttributeTitle :: AdminInterface
                   -> DecQ
@@ -538,38 +597,11 @@ defAttributeTitle ai = singleArgFunc 'attributeTitle
 
 
 
-defSelectionAttrs :: AdminInterface -> Maybe DecQ
-defReadAttrs      :: AdminInterface -> Maybe DecQ
-
-defSelectionAttrs = fmap (defListVar 'selectionPageAttributes)
-                         . selectionPageAttrs
-
-defReadAttrs      = fmap (defListVar 'readPageAttributes)
-                         . readPageAttrs
-
-defDBAttrs        :: AdminInterface -> DecQ
-defDBAttrs        = defListVar 'dbAttributes . dbAttrs
 
 
-defSelectionPageSort :: AdminInterface
-                     -> Maybe DecQ
-defSelectionPageSort ai = fmap (defsps $ name ai) $ sortOrder ai
-
-defsps :: Text -> [Text] -> DecQ
-defsps en fs = valD spsVar body []
-    where body   = normalB $ listE $ map sortOpt fs
-          spsVar = varP 'selectionPageSort
-          asc  = appE $ conE 'Asc
-          desc = appE $ conE 'Desc
-          sortOpt f | T.head f   == '-' = desc $ mkEntityField en $ T.tail f
-                    | T.head f   == '+' = asc  $ mkEntityField en $ T.tail f
-                    | otherwise        = asc  $ mkEntityField en f
 
 
-defListVar :: Name -> [Text] -> DecQ
-defListVar v es = valD var body []
-   where var  = varP v
-         body = normalB . listE $ map (conE . mkNameT) es
+
 
 {-
 
@@ -612,7 +644,5 @@ textFun f t = funD f [rhs []]
 entityName :: EntityDef -> Text
 entityName = unHaskellName . entityHaskell
 
-mkEntityField :: Text -> Text -> ExpQ
-mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
 
 -}
