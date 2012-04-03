@@ -39,12 +39,13 @@ Library
 --                , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.Internal
                , Yesod.Admin.Handlers.Internal.Helpers
-               , Yesod.Admin.Handlers.Internal.ReadR
-               , Yesod.Admin.Handlers.Internal.ListR
-               , Yesod.Admin.Handlers.Internal.PageR
                , Yesod.Admin.Handlers.Internal.CreateR
+               , Yesod.Admin.Handlers.Internal.ReadR
                , Yesod.Admin.Handlers.Internal.UpdateR
                , Yesod.Admin.Handlers.Internal.DeleteR
+               , Yesod.Admin.Handlers.Internal.ListR
+               , Yesod.Admin.Handlers.Internal.PageR
+               , Yesod.Admin.Handlers.Internal.ActionR
                , Yesod.Admin.Dispatch
   Build-depends: base
                , time
