@@ -296,17 +296,27 @@ defAssocType n cons clss ai b = dataInstD (cxt []) n [persistType en b]
             alts = [ normalC c [] | c <- map mkNameT cons ]
 
 
-defDBAttrs        :: AdminInterface -> DecQ
-defDBAttrs        = defListVar 'dbAttributes . dbAttrs
+defDBAttrs    :: AdminInterface -> DecQ
+defDBAttrs ai = defListVar 'dbAttributes
+              $ map (constructor en) 
+              $ dbAttrs ai
+  where en = name ai
 
 defSelectionAttrs :: AdminInterface -> Maybe DecQ
 defReadAttrs      :: AdminInterface -> Maybe DecQ
 
-defSelectionAttrs = fmap (defListVar 'selectionPageAttributes)
-                         . fmap (map unSort) . list
+defSelectionAttrs ai = fmap genCode $ list ai
+    where en         = name ai
+          genCode    = defAttrListVar 'selectionPageAttributes en
+                     . map  unSort
 
-defReadAttrs      = fmap (defListVar 'readPageAttributes)
-                         . readPage
+defReadAttrs ai   = fmap genCode $ readPage ai
+    where en      = name ai
+          genCode = defAttrListVar 'readPageAttributes en
+
+defAttrListVar :: Name -> Text -> [Text] -> DecQ
+defAttrListVar var en = defListVar var
+                      . map (constructor en)
 
 defSelectionPageSort :: AdminInterface
                      -> Maybe DecQ
