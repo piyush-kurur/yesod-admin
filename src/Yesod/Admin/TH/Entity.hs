@@ -26,13 +26,11 @@ module Yesod.Admin.TH.Entity
        -- $actionConstructors
 
          AdminInterface(..)
-       -- , mkAdminClasses
-       -- , entityDefToInterface
+       , mkAdminInstances
+       , entityDefToInterface
        , deriveInlineDisplay
        , deriveAttributeDisplay
-       {-
        , deriveAdministrable
-       -}
        ) where
 
 import Data.Char
@@ -162,6 +160,21 @@ fieldSet _ "inline"   _   = Left "inline: too many args"
 fieldSet _   f        _   = Left (T.unpack f ++ ": unknown field")
 
 
+-- | This TH combinator derives the three classes @`Administrable`@
+-- @`InlineDisplay`@ and @`AttributeDisplay`@ for a persistent entity.
+
+mkAdminInstances :: [EntityDef] -> DecsQ
+mkAdminInstances edefs = case err of
+                              []   -> sequence $ concat code
+                              errs -> fail $ unlines errs
+    where mkAI ai = [ deriveAdministrable' ai
+                    , deriveInlineDisplay' ai
+                    , deriveAttributeDisplay' ai
+                    ]
+          (err,code) = partitionEithers $ map mapper edefs
+                    
+          mapper     = fmap mkAI . entityDefToInterface
+          
 -- | Derive an instance of `InlineDisplay` for an entity give its
 -- administrative interface.
 deriveInlineDisplay  :: AdminInterface -> DecsQ
@@ -562,16 +575,6 @@ dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $
 
 
 
--- | This TH combinator derives the three classes @`Administrable`@
--- @`InlineDisplay`@ and @`AttributeDisplay`@ for a persistent entity.
-
-mkAdminClasses :: [EntityDef] -> DecsQ
-mkAdminClasses = sequence . concatMap mapper
-    where mkAC ai = [ deriveAdministrable' ai
-                    , deriveInlineDisplay' ai
-                    , deriveAttributeDisplay' ai
-                    ]
-          mapper   = mkAC . entityDefToInterface
 
 
 
