@@ -81,7 +81,7 @@ type Map = M.Map
 --    registration" give by the variable confirmRegistration and a
 --    custom action @Bar@ given by the variable @bar@. Here bar shold
 --    have the type $Key b v -> b m v$
---    
+--
 -- [@inline@] Attribute used in the inline display of the
 --    object. Should occur at most once in the admin section. There
 --    should be a single parameter which is the name of the attribute
@@ -172,9 +172,9 @@ mkAdminInstances edefs = case err of
                     , deriveAttributeDisplay' ai
                     ]
           (err,code) = partitionEithers $ map mapper edefs
-                    
+
           mapper     = fmap mkAI . entityDefToInterface
-          
+
 -- | Derive an instance of `InlineDisplay` for an entity give its
 -- administrative interface.
 deriveInlineDisplay  :: AdminInterface -> DecsQ
@@ -193,7 +193,7 @@ deriveInlineDisplay' ai =
      where b     = varT $ mkName "b"
            m     = varT $ mkName "m"
            en    = name ai
-           attr  = fromMaybe (head $ dbAttrs ai) $ inline ai 
+           attr  = fromMaybe (head $ dbAttrs ai) $ inline ai
            body = normalB $ displayRHS en attr
            instBody = [valD (varP 'inlineDisplay) body []]
 
@@ -263,7 +263,7 @@ defAction :: AdminInterface    -- ^ Entity name
           -> TypeQ             -- ^ Backend
           -> DecQ
 
-defAction ai   = defAssocType ''Action cons [''Enum] ai 
+defAction ai   = defAssocType ''Action cons [''Enum] ai
     where cons = map (actionCons en) $ fromMaybe ["delete"] $ action ai
           en   = name ai
 
@@ -273,13 +273,13 @@ defAssocType :: Name           -- ^ Name of the associate.
              -> AdminInterface -- ^ The interface
              -> TypeQ          -- ^ The backend.
              -> DecQ
-             
-            
+
+
 defAssocType n cons clss ai b = dataInstD (cxt []) n [persistType en b]
                                       alts clss
       where en   = name ai
             alts = [ normalC c [] | c <- map mkNameT cons ]
-            
+
 
 defDBAttrs        :: AdminInterface -> DecQ
 defDBAttrs        = defListVar 'dbAttributes . dbAttrs
@@ -349,7 +349,7 @@ checkAdminFields ai = combineErrs (T.unpack $ name ai)
                                       , rPC
                                       ]
      where inlineC = chk "inline: "
-                         $ maybeToList $ inline ai 
+                         $ maybeToList $ inline ai
            listC   = chk "list" $ map unSort $ fromMaybe [] $ list ai
            rPC     = chk "show" $ fromMaybe [] $ readPage ai
            chk msg = combineErrs msg . checkDBAttrs ai
@@ -372,7 +372,7 @@ combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
                l = length tag + 2
                indent len = (++) $ replicate len ' '
 
-           
+
 -- | Get rid of the sorting rule from an attribute name.
 unSort :: Text -> Text
 unSort t | T.head t == '+' = T.tail t
@@ -436,14 +436,14 @@ fieldName :: Text -> Text -> Text
 fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
 
 funcName :: Text -> Text
-funcName =  unCapitalise 
+funcName =  unCapitalise
 
 
 -- $ActionName
 --
 -- The action field of an persistent entity can contain a list of one
 -- or more action names. An action name can be one of the following:
---   
+--
 --   1. The string "delete" that captures the delete action.
 --
 --   2. A string that starts with an lower case letter e.g. @confirm@
@@ -630,7 +630,7 @@ in your main routes file.
 
 procAdminSection :: EntityDef -> AdminInterface
 procAdminSection ed = foldl fieldSetter (defaultInterface ed) adminLines
-    where 
+    where
 
 
 textFun :: Name -> Text -> DecQ
