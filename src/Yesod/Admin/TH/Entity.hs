@@ -38,6 +38,7 @@ import Data.List
 import qualified Data.Text as T
 import qualified Data.Map as M
 import Data.Maybe
+import Data.Either
 import Language.Haskell.TH
 import Database.Persist.EntityDef
 import Yesod
@@ -135,9 +136,11 @@ entityDefToInterface ed = do ai    <- setFields
                              aichk <- chk ai
                              return $ aichk {derivedAttrs = derAttrs aichk }
    where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
-         fld eai (x:xs) = fieldSet eai x xs
+         startAI        = defaultInterface ed
+         setFields      = foldl fld (Right $ startAI) adminLines
+         en             = T.unpack $ name startAI
+         fld eai (x:xs) = fieldSet en eai x xs
          fld eai []     = eai
-         setFields      = foldl fld (Right $ defaultInterface ed) adminLines
          derAttrs ai    = filter isDerived (lstAttrs ai ++ rpAttrs ai)
          lstAttrs ai    = map unSort $ fromMaybe [] $ list ai
          rpAttrs  ai    = fromMaybe [] $ readPage ai
@@ -146,19 +149,31 @@ entityDefToInterface ed = do ai    <- setFields
                 where errs = checkAdminFields ai
 
 
-fieldSet :: Either String AdminInterface
+fieldSet :: String
+         -> Either String AdminInterface
          -> Text
          -> [Text]
          -> Either String AdminInterface
 
-fieldSet eai "action" ts  = setAction eai ts
-fieldSet eai "list"   ts  = setList eai ts
-fieldSet eai "show"   ts  = setReadPage eai ts
-fieldSet _   "inline" []  = Left "inline: empty definition"
-fieldSet eai "inline" [t] = setInline eai t
-fieldSet _ "inline"   _   = Left "inline: too many args" 
-fieldSet _   f        _   = Left (T.unpack f ++ ": unknown field")
+fieldSet en eai "action" ts  = setAction   en eai ts
+fieldSet en eai "list"   ts  = setList     en eai ts
+fieldSet en eai "show"   ts  = setReadPage en eai ts
+fieldSet en _   "inline" []  = Left $ errMsg [ en
+                                             , "inline"
+                                             , " empty definition"
+                                             ]
+fieldSet en eai "inline" [t] = setInline en eai t
+fieldSet en _ "inline"   _   = Left $ errMsg [ en
+                                             , "inline"
+                                             , " too many args"
+                                             ]
+fieldSet en _   f        _   = Left $ errMsg [ en
+                                             , T.unpack f
+                                             , " unknown field"
+                                             ]
 
+errMsg :: [String] -> String
+errMsg = intercalate ":"
 
 -- | This TH combinator derives the three classes @`Administrable`@
 -- @`InlineDisplay`@ and @`AttributeDisplay`@ for a persistent entity.
@@ -382,21 +397,21 @@ unSort t | T.head t == '+' = T.tail t
 
 
 
-setAction :: Result -> [Text] -> Result
-setAction = setOnce action (\ ai x -> ai { action = Just x })
-                    "action: multiple definitions"
+setAction :: String -> Result -> [Text] -> Result
+setAction en = setOnce action (\ ai x -> ai { action = Just x })
+                    $ errMsg [ en, "action", " multiple definitions"]
 
-setInline :: Result -> Text -> Result
-setInline = setOnce inline (\ ai x -> ai { inline = Just x })
-                    "inline: multiple definitions"
+setInline :: String -> Result -> Text -> Result
+setInline en = setOnce inline (\ ai x -> ai { inline = Just x })
+                    $ errMsg [ en, "inline",  " multiple definitions"]
 
-setList :: Result -> [Text] -> Result
-setList = setOnce list (\ ai x -> ai { list = Just x })
-                    "List: multiple definitions"
+setList :: String -> Result -> [Text] -> Result
+setList en = setOnce list (\ ai x -> ai { list = Just x })
+                    $ errMsg [ en, "list", " multiple definitions"]
 
-setReadPage :: Result -> [Text] -> Result
-setReadPage = setOnce readPage (\ ai x -> ai { readPage = Just x })
-                    "show: multiple definitions"
+setReadPage :: String -> Result -> [Text] -> Result
+setReadPage en = setOnce readPage (\ ai x -> ai { readPage = Just x })
+                    $ errMsg [ en, "show", " multiple definitions"]
 
 
 setOnce :: (b -> Maybe x)
