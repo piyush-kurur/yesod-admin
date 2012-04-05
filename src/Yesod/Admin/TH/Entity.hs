@@ -562,9 +562,9 @@ actionCons  :: Text    -- ^ Entity name
 actionCons en act
    | T.null    act   = T.empty
    | act == "delete" = camelCaseUnwords [ en
-                                           , "Delete"
-                                           , "Action"
-                                           ]
+                                        , "Delete"
+                                        , "Action"
+                                        ]
    | isUpdate act    = camelCaseUnwords [ en
                                         , act
                                         , "Update"
@@ -572,7 +572,7 @@ actionCons en act
    | otherwise       = act
 
 actionConsP  :: Text -> Text -> PatQ
-actionConsP e attr = conP (mkNameT $ constructor e attr) []
+actionConsP e attr = conP (mkNameT $ actionCons e attr) []
 
 actionRHS :: Text -> Text -> ExpQ
 actionRHS en act | act == "delete" = conE 'DBDelete
