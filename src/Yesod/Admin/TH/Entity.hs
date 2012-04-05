@@ -234,7 +234,7 @@ deriveAttributeDisplay' ai
            en = name ai
            ats = dbAttrs ai ++ derivedAttrs ai
            instBody = [ funD 'attributeDisplay $ map mkClause ats ]
-           mkClause at = clause [constructorP en at] body []
+           mkClause at = clause [attrConsP en at] body []
                     where body = normalB $ displayRHS en at
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
@@ -268,7 +268,7 @@ defAttribute :: AdminInterface      -- ^ Entity name
 defAttribute ai = defAssocType ''Attribute cons
                                [''Eq, ''Enum, ''Bounded]
                                ai
-     where cons = map (constructor en) ats
+     where cons = map (attrCons en) ats
            en   = name ai
            ats  = dbAttrs ai ++ derivedAttrs ai
 
@@ -298,7 +298,7 @@ defAssocType n cons clss ai b = dataInstD (cxt []) n [persistType en b]
 
 defDBAttrs    :: AdminInterface -> DecQ
 defDBAttrs ai = defListVar 'dbAttributes
-              $ map (constructor en) 
+              $ map (attrCons en) 
               $ dbAttrs ai
   where en = name ai
 
@@ -316,7 +316,7 @@ defReadAttrs ai   = fmap genCode $ readPage ai
 
 defAttrListVar :: Name -> Text -> [Text] -> DecQ
 defAttrListVar var en = defListVar var
-                      . map (constructor en)
+                      . map (attrCons en)
 
 defSelectionPageSort :: AdminInterface
                      -> Maybe DecQ
@@ -523,11 +523,11 @@ setOnce _   _   _ leftB     _ = leftB
 --  the constructor will be @NameAndEmail@
 --
 
-constructor   :: Text    -- ^ Entity name
-              -> Text    -- ^ Attribute name
-              -> Text
+attrCons   :: Text    -- ^ Entity name
+           -> Text    -- ^ Attribute name
+           -> Text
 
-constructor en attr
+attrCons en attr
    | T.null    attr    = T.empty
    | isDerived attr    = capitalise attr
    | otherwise         = capitalise $ camelCaseUnwords [ en
@@ -535,8 +535,8 @@ constructor en attr
                                                        , "Attribute"
                                                        ]
 
-constructorP   :: Text -> Text -> PatQ
-constructorP e attr = conP (mkNameT $ constructor e attr) []
+attrConsP  :: Text -> Text -> PatQ
+attrConsP e attr = conP (mkNameT $ attrCons e attr) []
 
 -- $actionConstructors
 --
