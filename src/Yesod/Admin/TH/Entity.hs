@@ -527,13 +527,8 @@ attrCons   :: Text    -- ^ Entity name
            -> Text    -- ^ Attribute name
            -> Text
 
-attrCons en attr
-   | T.null    attr    = T.empty
-   | isDerived attr    = capitalise attr
-   | otherwise         = capitalise $ camelCaseUnwords [ en
-                                                       , attr
-                                                       , "Attribute"
-                                                       ]
+attrCons = constructor "Attribute"
+
 
 attrConsP  :: Text -> Text -> PatQ
 attrConsP e attr = conP (mkNameT $ attrCons e attr) []
@@ -560,16 +555,12 @@ actionCons  :: Text    -- ^ Entity name
             -> Text    -- ^ Action name
             -> Text
 actionCons en act
-   | T.null    act   = T.empty
    | act == "delete" = camelCaseUnwords [ en
                                         , "Delete"
                                         , "Action"
                                         ]
-   | isUpdate act    = camelCaseUnwords [ en
-                                        , act
-                                        , "Update"
-                                        ]
-   | otherwise       = act
+   | otherwise       = constructor "Update" en act
+
 
 actionConsP  :: Text -> Text -> PatQ
 actionConsP e attr = conP (mkNameT $ actionCons e attr) []
@@ -587,6 +578,20 @@ defDBAction ai = singleArgFunc 'dbAction
                  $ [ (actionConsP en  act, actionRHS en act) | act <- acts ]
     where acts   = fromMaybe ["delete"] $ action ai
           en     = name ai
+
+-- | This is a refactor of both attrCons and actionCons. The
+-- expression @constructor e m s@ is the camelcase concatination of e,
+-- m and s if m is lower case and just m if it is upper case. This is
+-- a design pattern in constructors of associated types in
+-- Administrable.
+
+constructor :: Text     -- ^ Suffix
+            -> Text     -- ^ entity name
+            -> Text     -- ^ middle name
+            -> Text
+constructor s e m | T.null  m = ""
+                  | isLower $ T.head m = camelCaseUnwords [e,m,s]
+                  | otherwise = m
 
 {-
 -- FIXME: Write a Quick check test to check dbAttrToFieldName
