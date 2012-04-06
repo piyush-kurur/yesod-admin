@@ -185,6 +185,8 @@ mkAdminInstances edefs = case err of
     where mkAI ai = [ deriveAdministrable' ai
                     , deriveInlineDisplay' ai
                     , deriveAttributeDisplay' ai
+                    , deriveRenderMessageAttribute ai
+                    , deriveRenderMessageAction ai
                     ]
           (err,code) = partitionEithers $ map mapper edefs
 
@@ -228,12 +230,11 @@ deriveAttributeDisplay' :: AdminInterface
 deriveAttributeDisplay' ai
             = mkInstance [persistStoreP b m]
                     ''AttributeDisplay [b, m, persistType en b]
-                    instBody
+                    [attrDisp]
      where b  = varT $ mkName "b"
            m  = varT $ mkName "m"
            en = name ai
-           ats = dbAttrs ai ++ derivedAttrs ai
-           instBody = [ funD 'attributeDisplay $ map mkClause ats ]
+           attrDisp = funD 'attributeDisplay $ map mkClause $ attrs ai
            mkClause at = clause [attrConsP en at] body []
                     where body = normalB $ displayRHS en at
 
@@ -259,6 +260,39 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                     , defReadAttrs      ai
                                     , defSelectionPageSort ai
                                     ]
+
+deriveRenderMessageAction :: AdminInterface
+                          -> DecQ
+deriveRenderMessageAction ai = defRenderMesg ''Action
+                                             actionConsP
+                                             (actions ai)
+                                             (name ai)
+
+deriveRenderMessageAttribute :: AdminInterface
+                             -> DecQ
+deriveRenderMessageAttribute ai = defRenderMesg ''Attribute
+                                                attrConsP
+                                                (attrs ai)
+                                                (name ai)
+
+defMsgRep :: Text -> ExpQ
+defMsgRep = textL . capitalise . unCamelCase
+
+defRenderMesg :: Name           -- ^ For which type
+              -> (Text -> Text -> PatQ) -- ^ Constructor creator
+              -> [Text]         -- ^ The fields
+              -> Text           -- ^ The entity name
+              -> DecQ
+defRenderMesg mesgName genCons fields en
+              = mkInstance [] ''RenderMessage [master, msgTyp]
+                                     [rm]
+     where master   = varT $ mkName "master"
+           b        = varT $ mkName "b"
+           msgTyp   = appT (conT mesgName) $ persistType en b
+           rm       = funD 'renderMessage $ map mkClause fields
+           mkClause c = clause [wildP, wildP, genCons en c]
+                        (normalB $ defMsgRep c) []
+
 
 -- | Define the attribute data type.
 defAttribute :: AdminInterface      -- ^ Entity name
@@ -298,7 +332,7 @@ defAssocType n cons clss ai b = dataInstD (cxt []) n [persistType en b]
 
 defDBAttrs    :: AdminInterface -> DecQ
 defDBAttrs ai = defListVar 'dbAttributes
-              $ map (attrCons en) 
+              $ map (attrCons en)
               $ dbAttrs ai
   where en = name ai
 
@@ -523,6 +557,9 @@ setOnce _   _   _ leftB     _ = leftB
 --  the constructor will be @NameAndEmail@
 --
 
+attrs      :: AdminInterface -> [Text]
+attrs ai   = dbAttrs ai ++ derivedAttrs ai
+
 attrCons   :: Text    -- ^ Entity name
            -> Text    -- ^ Attribute name
            -> Text
@@ -551,6 +588,7 @@ attrConsP e attr = conP (mkNameT $ attrCons e attr) []
 --  name itself.
 --
 
+
 actionCons  :: Text    -- ^ Entity name
             -> Text    -- ^ Action name
             -> Text
@@ -571,6 +609,10 @@ actionRHS en act | act == "delete" = conE 'DBDelete
                  | otherwise       = conE 'DBCustom `appE` customExp
     where updateExp = varE $ mkNameT $ unCapitalise $ actionCons en act
           customExp = varE $ mkNameT act
+
+actions :: AdminInterface
+        -> [Text]
+actions = fromMaybe ["delete"] . action
 
 defDBAction :: AdminInterface
             -> DecQ
@@ -593,33 +635,9 @@ constructor s e m | T.null  m = ""
                   | isLower $ T.head m = camelCaseUnwords [e,m,s]
                   | otherwise = m
 
+
+
 {-
--- FIXME: Write a Quick check test to check dbAttrToFieldName
--- (constructer e x) = x where ever x starts with a lower case
--- alphabet.
-
-dbAttrToFieldName t = unCapitalise $ camelCaseUnwords $
-                      init $ tail $ unCamelCaseWords t
-
-
-
-
-
-
-
-
-
-
-
-
-
-defObjectSingular :: AdminInterface -> Maybe DecQ
-defObjectPlural   :: AdminInterface -> Maybe DecQ
-
-defObjectSingular = fmap (textFun 'objectSingular) . singular
-defObjectPlural   = fmap (textFun 'objectPlural) . plural
-
-
 
 defAttributeTitle :: AdminInterface
                   -> DecQ
