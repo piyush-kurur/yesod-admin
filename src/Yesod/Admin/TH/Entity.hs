@@ -312,7 +312,7 @@ defAction :: AdminInterface    -- ^ Entity name
           -> TypeQ             -- ^ Backend
           -> DecQ
 
-defAction ai   = defAssocType ''Action cons [''Enum] ai
+defAction ai   = defAssocType ''Action cons [''Enum, ''Eq, ''Bounded] ai
     where cons = map (actionCons en) $ fromMaybe ["delete"] $ action ai
           en   = name ai
 

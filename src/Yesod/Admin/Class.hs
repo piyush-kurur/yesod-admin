@@ -101,6 +101,8 @@ class ( Eq (Attribute v)
       , Enum (Attribute v)
       , Bounded (Attribute v)
       , Enum (Action v)
+      , Bounded (Action v)
+      , Eq(Action v)
       , PersistEntity v
       )
       => Administrable v where
