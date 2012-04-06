@@ -151,31 +151,36 @@ mkDispatchInstance context sub master res = instanceD context
 -- | Generate dispatch instance for @'Crud'@ subsite.
 dispatchCrud :: String -> String -> DecQ
 dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
-   where c   = cxt [yp, pp, ps, rm]
-         rm  = classP ''RenderMessage [ mT, conT ''AdminMessage ]
-         yp  = classP ''YesodPersist [ mT ]
-         pp  = classP ''PathPiece    [ key ]
-         ps  = classP ''PersistStore [ yBackend, handler]
-         key      = [t| Key $yBackend $vT |]
+   where c        = cxt $ ps : commonPredQs m v
+         ps       = classP ''PersistStore [ yBackend, handler]
+         crudT    = [t| Crud $mT $vT |]
+         mT       = varT $ mkName m
+         vT       = varT $ mkName v
          yBackend = [t| YesodPersistBackend $mT |]
          handler  = [t| GHandler $crudT $mT |]
-         crudT    = [t| Crud $mT $vT |]
-         mT  = varT $ mkName m
-         vT  = varT $ mkName v
 
 -- | Generate dispatch instance for @'Selection'@ subsite.
 dispatchSelection :: String -> String -> DecQ
 dispatchSelection m v = mkDispatchInstance c selT mT
                                            selectionResources
-   where c   = cxt [yp, pp, ps, lc, rm]
-         lc  = classP ''LiftCrudRoutes [ mT, vT]
-         rm  = classP ''RenderMessage [ mT, conT ''AdminMessage ]
-         yp  = classP ''YesodPersist [ mT ]
-         pp  = classP ''PathPiece    [ key ]
-         ps  = classP ''PersistQuery [ yBackend, handler]
-         key      = [t| Key $yBackend $vT |]
+   where c       = cxt $ commonPredQs m v ++ [pq, lc, rmAc]
+         pq      = classP ''PersistQuery [ yBackend, handler]
+         selT    = [t| Selection $mT $vT |]
+         mT      = varT $ mkName m
+         vT      = varT $ mkName v
+         actionT = conT ''Action `appT` vT
+         lc      = classP ''LiftCrudRoutes [ mT, vT]
+         rmAc    = classP ''RenderMessage [ mT, actionT]
          yBackend = [t| YesodPersistBackend $mT |]
          handler  = [t| GHandler $selT $mT |]
-         selT     = [t| Selection $mT $vT |]
-         mT  = varT $ mkName m
-         vT  = varT $ mkName v
+
+commonPredQs :: String -> String -> [PredQ]
+commonPredQs m v  = [yp, pp, rmAM, rmAt]
+   where yp       = classP ''YesodPersist [ mT ]
+         pp       = classP ''PathPiece    [ key ]
+         rmAM     = classP ''RenderMessage [ mT, conT ''AdminMessage ]
+         rmAt     = classP ''RenderMessage [ mT, attributeT]
+         key      = [t| Key (YesodPersistBackend $mT) $vT |]
+         mT       = varT $ mkName m
+         vT       = varT $ mkName v
+         attributeT = conT ''Attribute `appT` vT
