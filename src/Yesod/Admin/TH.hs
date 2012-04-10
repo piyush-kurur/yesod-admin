@@ -7,7 +7,8 @@ interfaces.
 
 module Yesod.Admin.TH
        ( module Yesod.Admin.TH.Entity
+       , module Yesod.Admin.TH.Site
        ) where
 
 import Yesod.Admin.TH.Entity
---import Yesod.Admin.TH.Site()
+import Yesod.Admin.TH.Site

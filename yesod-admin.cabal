@@ -28,7 +28,7 @@ Library
                  , Yesod.Admin.Message.English
                  , Yesod.Admin.Render
                  , Yesod.Admin.Render.Defaults
-   --                 , Yesod.Admin.TH.Site
+                 , Yesod.Admin.TH.Site
    --                 , Yesod.Admin.Handlers
   
   Other-modules: Yesod.Admin.Helpers.Text
