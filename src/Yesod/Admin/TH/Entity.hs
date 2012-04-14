@@ -180,7 +180,9 @@ errMsg = intercalate ":"
 
 mkAdminInstances :: [EntityDef] -> DecsQ
 mkAdminInstances edefs = case err of
-                              []   -> sequence $ concat code
+                              []   -> do aE <- defEns
+                                         cs <- sequence $ concat code
+                                         return (aE:cs)
                               errs -> fail $ unlines errs
     where mkAI ai = [ deriveAdministrable' ai
                     , deriveInlineDisplay' ai
@@ -191,6 +193,10 @@ mkAdminInstances edefs = case err of
           (err,code) = partitionEithers $ map mapper edefs
 
           mapper     = fmap mkAI . entityDefToInterface
+          entities   = map (T.unpack . unHaskellName . entityHaskell) edefs
+          body       = normalB $ listE $ map stringE entities
+          defEns     = valD (varP $ mkName "adminEntities") body []
+                            
 
 -- | Derive an instance of `InlineDisplay` for an entity give its
 -- administrative interface.
