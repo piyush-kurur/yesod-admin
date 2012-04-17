@@ -302,13 +302,16 @@ class Yesod master => HasAdminLayout master where
 
       adminLayout :: GWidget sub master a  -- ^ The admin widget to render
                   -> GHandler sub master RepHtml
-      adminLayout content = defaultAdminLayout
-                          $ do _ <- adminStyles
-                               [whamlet|
-                                    <div .branding>^{branding}
-                                    <div .toolbar>^{toolBar}
-                                    <div .content>^{content}
+      adminLayout content
+                  = defaultAdminLayout
+                            $  adminStyles
+                            >> [whamlet|
+                                    <div .branding> ^{branding}
+                                    <div .toolbar>  ^{toolBar}
+                                    <div .content>  ^{content'}
                                |]
+           where content' = content >> return ()
+                               
 
 -- | The class defines the access control for crud operations.
 class ( YesodPersist master
