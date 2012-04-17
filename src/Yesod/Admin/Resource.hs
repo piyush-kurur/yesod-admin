@@ -36,8 +36,8 @@ The routes are
 /create         -- Creat it
 /update/#ID     -- update it
 /delete/#ID     -- delete it
-/list      -- selection list
-/list/#Int -- Page
+/               -- selection list
+/#Int           -- nth Page of selection
 /action         -- Action page
 
 -}
@@ -46,10 +46,9 @@ The routes are
 -- which is an instance of @'PersistQuery'@.
 selectionResources :: [Resource Type]
 selectionResources =
-        [ Resource "ListR"   (string "list"  ) $ get
-        , Resource "PageR"   [stringP "list", intP]
-                                       $ get
-        , Resource "ActionR" (string "action") $ post
+        [ Resource "ListR"   []     get
+        , Resource "PageR"   [intP] get
+        , Resource "ActionR" (string "action") post
         ]
 
 -- | These resources are meant for sites with a persistent backend
