@@ -14,9 +14,7 @@ You will never have to look into this.
 
 -}
 module Yesod.Admin.Resource
-       ( selectionResources
-       , crudResources
-       , mkAdminRoutes
+       ( mkAdminRoutes
        , mkAdminDispatch
        ) where
 
