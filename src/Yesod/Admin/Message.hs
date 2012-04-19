@@ -31,6 +31,7 @@ data AdminMessage = MsgAdminCreate
                   | MsgAdminCancel
                   | MsgAdminLogin
                   | MsgAdminLogout
+                  | MsgAdminPermissionDenied
 
 -- | Datatype representing various collective forms of objects. There
 -- are four forms: (1) to describe number of objects, for example when

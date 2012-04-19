@@ -26,3 +26,5 @@ render MsgAdminConfirm = "Confirm"
 render MsgAdminCancel  = "Cancel"
 render MsgAdminLogin   = "Login"
 render MsgAdminLogout  = "Logout"
+render MsgAdminPermissionDenied
+                       = "Permission Denied"
