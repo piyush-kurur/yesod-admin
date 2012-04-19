@@ -5,8 +5,8 @@ This modules defines some type convenient type aliases
 -}
 
 module Yesod.Admin.Types
-       ( Crud
-       , Selection
+       ( Crud(..)
+       , Selection(..)
        , SiteKey
        , SiteKVPair
        , DBAction(..)
