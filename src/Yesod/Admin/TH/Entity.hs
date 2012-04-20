@@ -175,28 +175,44 @@ fieldSet en _   f        _   = Left $ errMsg [ en
 errMsg :: [String] -> String
 errMsg = intercalate ":"
 
--- | This TH combinator derives the three classes @`Administrable`@
--- @`InlineDisplay`@ and @`AttributeDisplay`@ for a persistent entity.
-
+-- | To use the crud and selection subsites of an entity, we need to
+-- derive a few instances for an entity. This combinator derives a
+-- default instance for all the entities specified in its
+-- argument. Typically you would want to use this with the persist
+-- quasi-quoter.
 mkAdminInstances :: [EntityDef] -> DecsQ
-mkAdminInstances edefs = case err of
-                              []   -> do aE <- defEns
-                                         cs <- sequence $ concat code
-                                         return (aE:cs)
-                              errs -> fail $ unlines errs
-    where mkAI ai = [ deriveAdministrable' ai
-                    , deriveInlineDisplay' ai
-                    , deriveAttributeDisplay' ai
-                    , deriveRenderMessageAttribute ai
-                    , deriveRenderMessageAction ai
-                    ]
-          (err,code) = partitionEithers $ map mapper edefs
+mkAdminInstances edefs = do coreInst <- mkAdminInstances' edefs
+                            mesgInst <- withEntityDefs genCode edefs
+                            return $ coreInst ++ mesgInst
+    where genCode ai = [ deriveRenderMessageAttribute ai
+                       , deriveRenderMessageAction ai
+                       ]
 
-          mapper     = fmap mkAI . entityDefToInterface
+-- | This combinator is similar to @`mkAdminInstances`@ but does not
+-- derive the @`RenderMessage`@ instance for attributes and actions of
+-- the entity. This is useful for if you want to support i18n or want
+-- to overried the defaults choosen.
+mkAdminInstances' :: [EntityDef] -> DecsQ
+mkAdminInstances' edefs = do aE <- defEns
+                             insts <- withEntityDefs genCode edefs
+                             return (aE:insts)
+    where genCode ai = [ deriveAdministrable' ai
+                       , deriveInlineDisplay' ai
+                       , deriveAttributeDisplay' ai
+                       ]
           entities   = map (T.unpack . unHaskellName . entityHaskell) edefs
           body       = normalB $ listE $ map stringE entities
           defEns     = valD (varP $ mkName "adminEntities") body []
-                            
+
+
+withEntityDefs :: (AdminInterface -> [DecQ])
+               -> [EntityDef]
+               -> DecsQ
+withEntityDefs genCode edefs = case err of
+                                    [] -> sequence $ concat code
+                                    errs -> fail $ unlines errs
+    where (err,code) = partitionEithers $ map mapper edefs
+          mapper     = fmap genCode . entityDefToInterface
 
 -- | Derive an instance of `InlineDisplay` for an entity give its
 -- administrative interface.
