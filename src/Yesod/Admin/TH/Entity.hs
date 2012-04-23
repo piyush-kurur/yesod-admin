@@ -42,6 +42,7 @@ import Data.Either
 import Language.Haskell.TH
 import Database.Persist.EntityDef
 import Yesod
+
 import Yesod.Admin.Types
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
@@ -551,17 +552,6 @@ isDelete  = (==) "delete"
 isUpdate  = isLower . T.head
 isCustomAction = isUpper . T.head
 
-
-
-
-{-
-setOnce g p a (Right b) x = maybe (Right $ p b x) (const $ Left a) $ g b
-setOnce _   _   _ leftB     _ = leftB
-
--}
-
-
-
 -- $attributeConstructors
 --
 -- The TH code generates one constructor for each database entry plus
@@ -585,7 +575,6 @@ attrs ai   = dbAttrs ai ++ derivedAttrs ai
 attrCons   :: Text    -- ^ Entity name
            -> Text    -- ^ Attribute name
            -> Text
-
 attrCons = constructor "Attribute"
 
 
@@ -609,7 +598,6 @@ attrConsP e attr = conP (mkNameT $ attrCons e attr) []
 --  3. For a custom action @FooBar@, the constructor will the action
 --  name itself.
 --
-
 
 actionCons  :: Text    -- ^ Entity name
             -> Text    -- ^ Action name
@@ -648,7 +636,6 @@ defDBAction ai = singleArgFunc 'dbAction
 -- m and s if m is lower case and just m if it is upper case. This is
 -- a design pattern in constructors of associated types in
 -- Administrable.
-
 constructor :: Text     -- ^ Suffix
             -> Text     -- ^ entity name
             -> Text     -- ^ middle name
@@ -656,66 +643,3 @@ constructor :: Text     -- ^ Suffix
 constructor s e m | T.null  m = ""
                   | isLower $ T.head m = camelCaseUnwords [e,m,s]
                   | otherwise = m
-
-
-
-{-
-
-defAttributeTitle :: AdminInterface
-                  -> DecQ
-defAttributeTitle ai = singleArgFunc 'attributeTitle
-                               $ [ (mkC c, textL t) | (c,t) <- cts]
-    where cts   = M.toList $ titles ai
-          mkC c = conP (mkNameT c) []
-
-
-
-
-
-
-
-
-
-{-
-
-$helpers
-
-Besides declaring all the necessary admininstrative instances,
-@`mkYesodAdmin`@ applied to the admin interfaces of entity Foo also
-declares the following:
-
-  1. The type alias @FooAdmin@ for the time @Admin Site Foo@
-
-  2. The function @getFooAdmin@
-
-This is to facilitate hooking of the admin subsite to the main
-subsite. You can then include the route of the kind
-
-> /admin/foo FooAdminR FooAdmin getFooAdmin
-
-in your main routes file.
-
-
--}
-
-procAdminSection :: EntityDef -> AdminInterface
-procAdminSection ed = foldl fieldSetter (defaultInterface ed) adminLines
-    where
-
-
-textFun :: Name -> Text -> DecQ
-textFun f t = funD f [rhs []]
-        where rhs = clause [wildP] $ normalB $ textL t
-
-
--- constructorE   :: Text -> Text -> ExpQ
--- constructorE e attr = conE $ mkNameT $ constructor e attr
-
-
-
-
-entityName :: EntityDef -> Text
-entityName = unHaskellName . entityHaskell
-
-
--}
