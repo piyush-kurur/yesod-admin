@@ -49,7 +49,6 @@ import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
 
 type Text = T.Text
-type Map = M.Map
 
 -- $adminSection
 -- To define the admin interface for a persistent objects one needs to
