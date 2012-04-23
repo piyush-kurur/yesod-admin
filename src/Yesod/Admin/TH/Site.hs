@@ -68,10 +68,13 @@ mkAdminData master adminR ens
             = do admin <- defAdmin master
                  als   <- mkCode mkBoth ens
                  lCs   <- mkCode (mkLiftCrudRoutes master adminR) ens
-                 return $ concat [admin, als, lCs]
+                 rR    <- mkRenderRouteInstance aT
+                                 $ mkAdminResources ens
+                 return $ rR:concat [admin, als, lCs]
    where mkBoth en = do c <- mkCrudAliases master en
                         s <- mkSelAliases master en
                         return $ c ++ s
+         aT = ConT $ mkName $ adminSiteType master
 
 -- | Create a dispatch instance for the admin subsite.
 mkAdminDispatch :: String   -- ^ Foundation type
@@ -103,7 +106,11 @@ mkAdminCrudData :: String       -- ^ Foundation type
 mkAdminCrudData master ens = 
             do admin <- defAdmin master
                code  <- mkCode (mkCrudAliases master) ens
-               return $ admin ++ code
+               rR    <- mkRenderRouteInstance aT
+                                 $ mkAdminCrudResources ens
+               return $ rR : (admin ++ code)
+   where aT = ConT $ mkName $ adminSiteType master
+
 
 -- | Similar to @mkAdminDispatch@ except that dispatch works only for
 -- curd subiste. This should be used together with 'mkAdminCurdData'.
