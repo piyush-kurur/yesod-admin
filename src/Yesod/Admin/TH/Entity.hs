@@ -50,10 +50,10 @@ import Yesod.Admin.Class
 
 type Text = T.Text
 
--- $adminSection
--- To define the admin interface for a persistent objects one needs to
--- define and admin section in the persistent object definition For
--- example look at the definition of person in the following code.
+-- $adminSection To define the admin interface for a persistent
+-- objects one needs to define and admin section in the persistent
+-- object definition. For example look at the definition of person in
+-- the following code.
 --
 -- >      [persist|
 -- >                Person
@@ -71,14 +71,15 @@ type Text = T.Text
 -- @list@ and @title@.
 
 -- $adminFields
+-- 
 -- [@action@] A list of allowed admin actions. Should occur at most
 --    once. The words in the the list should contain either (1) the
 --    word "delete" (delete) (2) a word starting with a small case
 --    letter (update action) or (3) a word starting with a upper case
 --    letter (a custom action). The textual representation is obtained
---    by taking the un-camelcased version of the name.  E.g.  a line
---    of the form @action delete confirmRegistration Bar@ means that
---    the object supports delete, an update action titled "Confirm
+--    by taking the un-camelcased version of the name. E.g. a line of
+--    the form @action delete confirmRegistration Bar@ means that the
+--    object supports delete, an update action titled "Confirm
 --    registration" give by the variable confirmRegistration and a
 --    custom action @Bar@ given by the variable @bar@. Here bar shold
 --    have the type $Key b v -> b m v$
@@ -93,7 +94,7 @@ type Text = T.Text
 --    the objects. Should occur at most once in the admin section. The
 --    parameter is the list of attribute and the ordering of the
 --    attribute should be as required in the selection listing. Each
---    /database attribute/ (refer attribute naming converntion) is
+--    /database attribute/ (refer attribute naming convention) is
 --    optionally prefixed by either a + or a - to indicate whether the
 --    selection should sort in increasing or decreasing order with
 --    respect to that attribute respectively. Default value is the
@@ -221,7 +222,7 @@ deriveInlineDisplay  :: AdminInterface -> DecsQ
 -- | Similar to `deriveInlineDisplay` but does not wrap the
 -- declaration inside a list. Not very useful in the wild as splicing
 -- expects `DecsQ` instead `DecQ` but useful in defining other
--- template haskell function. Currently not exported
+-- template haskell function. Currently not exported.
 deriveInlineDisplay' :: AdminInterface
                      -> DecQ
 deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
@@ -246,7 +247,7 @@ deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
 -- | Same as `deriveAttributeDisplay` but does not wrap the
 -- declaration inside a list. Not very useful in the wild as splicing
 -- expects `DecsQ` instead `DecQ` but useful in defining other
--- template haskell function. Currently not exported
+-- template haskell function. Currently not exported.
 deriveAttributeDisplay' :: AdminInterface
                         -> DecQ
 deriveAttributeDisplay' ai
@@ -262,7 +263,6 @@ deriveAttributeDisplay' ai
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
 -- the AdminInterface for @v@.
-
 deriveAdministrable  :: AdminInterface
                      -> DecsQ
 deriveAdministrable' :: AdminInterface
