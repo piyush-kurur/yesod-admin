@@ -77,11 +77,8 @@ mkAdminData master adminR ens
 mkAdminDispatch :: String   -- ^ Foundation type
                 -> [String] -- ^ Entities
                 -> DecQ
-mkAdminDispatch master = genAdminDispatch mT aT . concatMap mkR
-      where mkR en = [ mkCrudResource en
-                     , mkSelResource  en
-                     ]
-            aT  = conT $ mkName $ adminSiteType master
+mkAdminDispatch master = genAdminDispatch mT aT . mkAdminResources
+      where aT  = conT $ mkName $ adminSiteType master
             mT  = conT $ mkName master
 
 
@@ -113,7 +110,8 @@ mkAdminCrudData master ens =
 mkAdminCrudDispatch :: String   -- ^ Foundation type
                     -> [String] -- ^ Entities
                     -> DecQ
-mkAdminCrudDispatch master = genAdminDispatch mT aT . map mkCrudResource
+mkAdminCrudDispatch master = genAdminDispatch mT aT
+                           . mkAdminCrudResources
       where aT  = conT $ mkName $ adminSiteType master
             mT  = conT $ mkName master
 
@@ -144,7 +142,20 @@ mkSelResource entity
                            [entity, "selection"]
                            (selTypeName entity)
 
+-- | Generate resources for an admin site given the entity names.
+mkAdminResources :: [String]             -- ^ Entities
+                 -> [Resource Type]
+mkAdminResources ens = homeRes: concatMap mkR ens
+    where mkR en = [ mkCrudResource en
+                   , mkSelResource  en
+                   ]
 
+-- | Similar to `mkAdminResources` except that only the crud resources
+-- are created.
+mkAdminCrudResources :: [String]             -- ^ Entities
+                     -> [Resource Type]      -- ^ 
+mkAdminCrudResources ens = homeRes: map mkCrudResource ens
+     
 genAdminDispatch :: TypeQ    -- ^ Admin type
                  -> TypeQ    -- ^ master type
                  -> [Resource Type]
@@ -166,6 +177,8 @@ mkResource cons ps ty = Resource cons [(True, Static p) | p <- ps]
                                 $ Subsite (ConT $ mkName ty)
                                           (getFuncName ty)
 
+homeRes :: Resource Type
+homeRes = Resource "AdminHomeR" [] $ Methods Nothing ["GET"]
 
 mkSelAliases :: String  -- ^ Foundation
              -> String  -- ^ Entity name
