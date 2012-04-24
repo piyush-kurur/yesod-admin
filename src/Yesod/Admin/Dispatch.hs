@@ -11,12 +11,8 @@ ugly Haddock.
 
 -}
 
-module Yesod.Admin.Dispatch() where
+module Yesod.Admin.Dispatch where
 
-import Data.Text(Text)
-
-import Yesod
-import Yesod.Admin.Types
 import Yesod.Admin.Resource
 import Yesod.Admin.Routes
 import Yesod.Admin.Handlers.Internal

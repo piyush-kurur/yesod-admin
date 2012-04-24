@@ -22,6 +22,8 @@ Library
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Class
                  , Yesod.Admin.Types
+                 , Yesod.Admin.Routes
+                 , Yesod.Admin.Dispatch
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
                  , Yesod.Admin.Message
@@ -33,7 +35,6 @@ Library
   
   Other-modules: Yesod.Admin.Helpers.Text
                , Yesod.Admin.Resource
-               , Yesod.Admin.Routes
                , Yesod.Admin.TH.Helpers
 --                , Yesod.Admin.Handlers.Helpers
                , Yesod.Admin.Handlers.Internal
@@ -45,7 +46,7 @@ Library
                , Yesod.Admin.Handlers.Internal.ListR
                , Yesod.Admin.Handlers.Internal.PageR
                , Yesod.Admin.Handlers.Internal.ActionR
-               , Yesod.Admin.Dispatch
+
   Build-depends: base
                , time
                , old-locale

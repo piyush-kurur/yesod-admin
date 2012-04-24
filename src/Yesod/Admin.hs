@@ -24,6 +24,8 @@ module Yesod.Admin
          module Yesod.Admin.Class
        , module Yesod.Admin.Types
        , module Yesod.Admin.TH
+       , module Yesod.Admin.Dispatch
+       , module Yesod.Admin.Routes
        -- , module Yesod.Admin.Render
        -- , module Yesod.Admin.Handlers
        --, module Yesod.Admin.TH
@@ -34,8 +36,8 @@ import Yesod.Admin.Types
 import Yesod.Admin.Render
 import Yesod.Admin.TH
 
--- import Yesod.Admin.Handlers
--- import Yesod.Admin.Dispatch()
+import Yesod.Admin.Routes
+import Yesod.Admin.Dispatch()
 
 {- $concepts
 
