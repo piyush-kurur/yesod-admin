@@ -52,7 +52,7 @@ mkAdminSite :: String   -- ^ Foundation type
             -> DecsQ
 mkAdminSite master adminR ens
             = do aData <- mkAdminData master adminR ens
-                 disp  <- mkAdminDispatch master ens
+                 disp  <- mkAdminDispatch' master ens
                  return $ disp:aData
 
 -- | This function is similar to the `mkAdminSite` function but does
@@ -76,11 +76,18 @@ mkAdminData master adminR ens
                         return $ c ++ s
          aT = ConT $ mkName $ adminSiteType master
 
--- | Create a dispatch instance for the admin subsite.
-mkAdminDispatch :: String   -- ^ Foundation type
-                -> [String] -- ^ Entities
-                -> DecQ
-mkAdminDispatch master = genAdminDispatch mT aT . mkAdminResources
+-- | Creates a dispatch instance for an admin subsite.
+mkAdminDispatch :: String    -- ^ Foundation type
+                -> [String]  -- ^ The entities
+                -> DecsQ
+mkAdminDispatch master = fmap (:[]) . mkAdminDispatch' master
+
+-- | Similar to `mkAdminDispatch` but generates a DecQ instead of
+-- DecsQ.
+mkAdminDispatch' :: String   -- ^ Foundation type
+                 -> [String] -- ^ Entities
+                 -> DecQ
+mkAdminDispatch' master = genAdminDispatch mT aT . mkAdminResources
       where aT  = conT $ mkName $ adminSiteType master
             mT  = conT $ mkName master
 
@@ -95,7 +102,7 @@ mkAdminCrudSite :: String   -- ^ Foundation type
                 -> DecsQ
 mkAdminCrudSite master ens
             = do aData <- mkAdminCrudData master ens
-                 disp  <- mkAdminCrudDispatch master ens
+                 disp  <- mkAdminCrudDispatch' master ens
                  return $ disp:aData
 
 -- | Similar to @mkAdminData@ except that only the crud instances are
@@ -116,8 +123,13 @@ mkAdminCrudData master ens =
 -- curd subiste. This should be used together with 'mkAdminCurdData'.
 mkAdminCrudDispatch :: String   -- ^ Foundation type
                     -> [String] -- ^ Entities
-                    -> DecQ
-mkAdminCrudDispatch master = genAdminDispatch mT aT
+                    -> DecsQ
+mkAdminCrudDispatch master = fmap (:[]) . mkAdminCrudDispatch' master
+
+mkAdminCrudDispatch' :: String   -- ^ Foundation type
+                     -> [String] -- ^ Entities
+                     -> DecQ
+mkAdminCrudDispatch' master = genAdminDispatch mT aT
                            . mkAdminCrudResources
       where aT  = conT $ mkName $ adminSiteType master
             mT  = conT $ mkName master
