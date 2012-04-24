@@ -20,7 +20,7 @@ module Yesod.Admin.TH.Helpers
        ) where
 
 import Language.Haskell.TH
-import Data.Text( Text, unpack)
+import Data.Text(Text, unpack, pack)
 import Yesod
 import Yesod.Admin.Helpers.Text
 
@@ -69,8 +69,7 @@ getEntityAdmin :: String  -- ^ the persistent entity
 getEntityAdmin entity = "get" ++ entity ++ "Admin"
 
 textL :: Text -> ExpQ
-textL t = sigE strL $ conT ''Text
-     where strL = litE $ stringL (unpack t)
+textL t = varE 'pack `appE` stringE (unpack t)
 
 mkNameT :: Text -> Name
 mkNameT = mkName . unpack
