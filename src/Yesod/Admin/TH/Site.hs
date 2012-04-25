@@ -238,39 +238,6 @@ mkCode f = combineDecs . map f
 
 combineDecs :: [DecsQ] -> DecsQ
 combineDecs = fmap concat . sequence
-{-
-
-mkAdminSite master adminR entities = do c  <- code
-                                        d  <- dispInst
-                                        r  <- rendRoute
-                                        return (r:d:c)
-       where (ccs,crs) = unzip $ map (mkCrud master adminR) entities
-             (scs,srs) = unzip $ map (mkSel master) entities
-             res       = concat [ [c,s] | (c,s) <- zip crs srs ]
-             code      = fmap concat $ sequence $ ccs ++ scs
-             adminN    = mkName $ adminSiteType master
-             adminType = ConT adminN
-             mT        = conT $ mkName master
-             aT        = return adminType
-             rendRoute = mkRenderRouteInstance adminType res
-             dispInst  = instanceD (cxt []) yDispatch [adminDispatch]
-             yDispatch = [t|YesodDispatch $aT $mT |]
-             clz       = mkDispatchClause [|yesodRunner|]
-                                          [|yesodDispatch|]
-                                          [|fmap chooseRep|]
-                                          res
-             adminDispatch = funD 'yesodDispatch [clz]
-
--}
-
-
-
-{-
-
-
--}
-
-
 
 
 defCrudType :: String  -- Foundation
