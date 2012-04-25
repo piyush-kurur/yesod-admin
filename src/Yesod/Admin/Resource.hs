@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE QuasiQuotes          #-}
-{-# LANGUAGE ConstraintKinds      #-}
+
 
 {-|
 
@@ -143,7 +143,7 @@ mkDispatchInstance context sub master res = instanceD context
                                           [|fmap chooseRep|]
                                           res
               thisDispatch    = funD 'yesodDispatch [clauses]
-              yDispatch = [t| YesodDispatch $sub $master |]
+              yDispatch = conT ''YesodDispatch `appT` sub `appT` master
 
 -- | Generate dispatch instance for @'Crud'@ subsite.
 dispatchCrud :: String -> String -> DecQ

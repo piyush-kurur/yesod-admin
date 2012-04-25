@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE ConstraintKinds            #-}
+
 {-|
 
 This module sets up the admin sites for all administrable objects of
@@ -181,7 +181,7 @@ genAdminDispatch :: TypeQ    -- ^ Admin type
                  -> DecQ
 genAdminDispatch mT aT res = instanceD (cxt []) yDispatch
                                        [funD 'yesodDispatch [clz]]
-      where  yDispatch = [t|YesodDispatch $aT $mT |]
+      where  yDispatch = conT ''YesodDispatch `appT` aT `appT` mT
              clz       = mkDispatchClause [|yesodRunner|]
                                           [|yesodDispatch|]
                                           [|fmap chooseRep|]
