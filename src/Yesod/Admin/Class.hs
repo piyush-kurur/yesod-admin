@@ -66,6 +66,7 @@ module Yesod.Admin.Class
        -- $liftRoutes
        , LiftCrudRoutes (..)
        , LiftSelectionRoutes (..)
+       , LiftAdminRoutes (..)
        ) where
 
 import Data.ByteString (ByteString)
@@ -423,3 +424,6 @@ class LiftCrudRoutes master v where
 -- | This class captures how selection routes are to be lifted.
 class LiftSelectionRoutes master v where
       liftSelectionR :: Route (Selection master v) -> Route master
+
+class LiftAdminRoutes master where
+      liftAdminR :: Route (Admin master) -> Route master
