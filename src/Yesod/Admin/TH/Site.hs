@@ -6,17 +6,15 @@
 {-|
 
 This module sets up the admin sites for all administrable objects of
-you application. Let @Site@ by your foundation type then the TH code
-here helps create the subsite data type @SiteAdmin@. The crud and
-selection subsites for each entity will occur as subsites of
-@SiteAdmin@. All that is left for the user is to hook @SiteAdmin@ as a
-subsite of the foundation type @Site@.
-
+you application.
 
 -}
 
 module Yesod.Admin.TH.Site
-       ( mkAdminSite
+       (
+       -- * Basic Idea.
+       -- $basicIdea
+         mkAdminSite
        -- * Route Constructors.
        -- $adminRoutes
        -- * Default admin home page.
@@ -35,6 +33,23 @@ import Yesod.Routes.TH
 
 import Yesod.Admin.Types
 import Yesod.Admin.Class
+
+-- $basicIdea
+--
+-- Let @Site@ by your foundation type. The TH code in this module
+-- helps create the subsite data type @SiteAdmin@. The crud and
+-- selection subsites for each entity will occur as subsites of
+-- @SiteAdmin@. All that is left for the user is to hook @SiteAdmin@
+-- as a subsite of the foundation type @Site@. However there is a
+-- slight problem in this approach. To define the `LiftCrudRoutes` and
+-- `LiftSelectionRoutes` instance one needs to know where the
+-- @SiteAdmin@ subsite is hooked in the routes of @Site@. This mean
+-- that one needs the corresponding constructors. This is why TH code
+-- here requires an extra string argument which is the name of the
+-- constructor where the SiteAdmin is to be hooked.
+--
+-- 
+
 
 -- | Create an admin subsite.
 mkAdminSite :: Bool     -- ^ should generate selection subsite?
@@ -235,6 +250,14 @@ selTypeName  = flip (++) "Selection"
 crudCons :: String -> String
 selCons  :: String -> String
 
+-- $adminRoutes
+--
+-- We now describe how to obtain type safe urls to parts of the admin
+-- site. Let @Site@ be the foundation type of your application then
+-- the TH code generates the subsite @SiteAdmin@ which you can hook
+-- into the route of your foundation type @Site@. Let @AdminR@ be the
+-- corresponding constructor.
+-- 
 crudCons ty = crudTypeName ty ++ "R"
 selCons ty  = selTypeName ty ++ "R"
 
