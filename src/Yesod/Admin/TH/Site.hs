@@ -44,9 +44,9 @@ mkAdminSite :: Bool     -- ^ should generate selection subsite?
             -> [String] -- ^ Entities
             -> DecsQ
 mkAdminSite genSel master adminR ens
-            = do aData <- mkAdminData genSel master adminR ens
-                 disp  <- mkAdminDispatch' genSel master ens
-                 return $ disp:aData
+            = do aData <- mkAdminData genSel master ens
+                 disp  <- mkAdminDispatch genSel master adminR ens
+                 return $ disp ++ aData
 
 -- | This function is similar to the `mkAdminSite` function but does
 -- not generate the dispatch instance for the site. Useful to separate
@@ -55,16 +55,14 @@ mkAdminSite genSel master adminR ens
 -- hooked is defined in the context where the TH function is called.
 mkAdminData :: Bool         -- ^ Generate selection site or not
             -> String       -- ^ Foundation type
-            -> String       -- ^ Admin root constructor
             -> [String]     -- ^ Entities
             -> DecsQ
-mkAdminData genSel master adminR ens
+mkAdminData genSel master ens
             = do admin <- defAdmin master
                  als   <- mkAdminAliases genSel master ens
-                 lCs   <- mkCode (mkLiftCrudRoutes master adminR) ens
                  rR    <- mkRenderRouteInstance aT
                                  $ mkAdminResources genSel ens
-                 return $ rR:concat [admin, als, lCs]
+                 return $ rR:admin ++ als
    where aT = ConT $ mkName $ adminSiteType master
 
 -- | Creates a dispatch instance for an admin subsite. Used together
@@ -73,9 +71,14 @@ mkAdminData genSel master adminR ens
 mkAdminDispatch :: Bool      -- ^ Generate the selection subsite or
                              -- not.
                 -> String    -- ^ Foundation type
+                -> String    -- ^ Admin root constructor
                 -> [String]  -- ^ The entities
                 -> DecsQ
-mkAdminDispatch genSel master = fmap (:[]) . mkAdminDispatch' genSel master
+mkAdminDispatch genSel master adminR ens
+     | genSel = do disp <- mkAdminDispatch' genSel master ens
+                   lCs  <- mkCode (mkLiftCrudRoutes master adminR) ens
+                   return $ disp:lCs
+     | otherwise = fmap (:[]) $ mkAdminDispatch' genSel master ens
 
 -- | The dispatch instance generating workhorse.
 mkAdminDispatch' :: Bool     -- ^ Whether to create selection subsite
@@ -87,6 +90,7 @@ mkAdminDispatch' genSel master = genAdminDispatch mT aT
       where aT  = conT $ mkName $ adminSiteType master
             mT  = conT $ mkName master
 
+-- | This generates the admin aliases for each entry.
 mkAdminAliases :: Bool     -- ^ Generate selection subsite or not.
                -> String   -- ^ Foundation type
                -> [String] -- ^ Entities
@@ -162,14 +166,14 @@ mkSelAliases master entity = sequence [ defSelType master entity
 
 mkLiftCrudRoutes :: String      -- ^ Foundation type
                  -> String      -- ^ admin Root constructor
-                 -> String      -- ^ Entity
+                 -> String      -- ^ entity
                  -> DecsQ
 
-mkLiftCrudRoutes master adminR entity
+mkLiftCrudRoutes master adminR  entity
                  = [d| instance LiftCrudRoutes $mT $eT where
                                 liftCrudR = $adminRC . $crudC
                    |]
-             where eT       = conT $ mkName entity
+             where eT       = varT $ mkName entity
                    mT       = conT $ mkName master
                    adminRC  = conE $ mkName adminR
                    crudC    = conE $ mkName $ crudCons entity
@@ -218,8 +222,7 @@ defGet ty con = funD name [clause [wildP] (normalB body) []]
        where name = mkName $ getFuncName ty
              body = sigE (conE $ mkName con) $ conT $ mkName ty
 
--- $type aliase
---
+
 getFuncName  :: String -> String
 getFuncName = (++) "get"
 
