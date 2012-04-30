@@ -26,16 +26,6 @@ data Crud master v = Crud
 -- | The selection subsite
 data Selection master v = Selection
 
--- | Default value for the Crud site
-instance Default (Crud master v) where
-         def = Crud
-
--- | Default value of Selection site
-instance Default (Selection master v) where
-         def = Selection
-
-
-
 {-|
 
 We assume that the master site is an instance of YesodPersist. This is

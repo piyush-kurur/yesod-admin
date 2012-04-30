@@ -13,8 +13,11 @@ ugly Haddock.
 
 module Yesod.Admin.Dispatch where
 
+import Yesod.Admin.Types
 import Yesod.Admin.Resource
 import Yesod.Admin.Routes
 import Yesod.Admin.Handlers.Internal
 
+getCrud :: Selection master v -> Crud master v
+getCrud = const Crud
 mkAdminDispatch "master" "v"

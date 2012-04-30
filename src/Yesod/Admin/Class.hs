@@ -64,8 +64,6 @@ module Yesod.Admin.Class
        , HasAdminLayout (..)
        -- * Lifting admin routes.
        -- $liftRoutes
-       , LiftCrudRoutes (..)
-       , LiftSelectionRoutes (..)
        ) where
 
 import Data.ByteString (ByteString)
@@ -398,28 +396,3 @@ class ( YesodPersist master
       actionFilter authId _ = do issup <- isSuperUser authId
                                  if issup then return $ FilterAnd []
                                     else return $ FilterOr []
-
--- $liftRoutes
---
--- To facilitate cross linking between crud and selection pages, we
--- need a mechanism to lift their routes (crud and selection routes)
--- to the master routes. Consider the example of linking and object
--- from the selection page to the individual object page (a crud
--- page). It is not possible to use something like `getRouteToMaster`
--- as that can only lift a selection route to a master route. If one
--- knew how (i.e. the constructor for the type safe url of the crud
--- subsite) one can easily do this. However, this is known only when
--- the library is used. The classes `LiftCrudRoutes` is defined for
--- this exact purpose. For consistency, we give a similar class for
--- selection routes as wellL: `LiftSelectionRoutes`.
---
--- The TH code for generating the admin subsite will auto-generate
--- these instances so that a user need not worry defining this.
-
--- | This class captures how crud routes are to be lifted.
-class LiftCrudRoutes master v where
-      liftCrudR :: Route (Crud master v) -> Route master
-
--- | This class captures how selection routes are to be lifted.
-class LiftSelectionRoutes master v where
-      liftSelectionR :: Route (Selection master v) -> Route master

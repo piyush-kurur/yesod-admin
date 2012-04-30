@@ -19,7 +19,6 @@ module Yesod.Admin.Resource
        ) where
 
 import Yesod hiding (get)
-import Yesod.Admin.Types
 import Yesod.Admin.Class
 import Yesod.Admin.Message
 import Data.Default
@@ -42,12 +41,18 @@ The routes are
 
 -- | These resources are meant for sites with a persistent backend
 -- which is an instance of @'PersistQuery'@.
-selectionResources :: [Resource Type]
-selectionResources =
-        [ Resource "ListR"   []     get
-        , Resource "PageR"   [intP] get
+selectionResources :: String    -- ^ master
+                   -> String    -- ^ entity
+                   -> [Resource Type]
+selectionResources master v =
+        [ Resource "CrudR"   []  crudDispatch
+        , Resource "ListR"   (string "selection") get
+        , Resource "PageR"   [stringP "selection", intP] get
         , Resource "ActionR" (string "action") post
         ]
+     where crudDispatch = Subsite (crudType master v)
+                                  "getCrud"
+
 
 -- | These resources are meant for sites with a persistent backend
 -- which is an instance of @'PersistStore'@.
@@ -70,13 +75,13 @@ mkAdminRoutes master v
       = sequence [ mkI (crudType master v)
                        (crudResources master v)
                  , mkI (selectionType master v)
-                       selectionResources
+                       $ selectionResources master v
                  ]
       where mkI       = mkRenderRouteInstance' context
             context   = [ yp, pathPiece ]
             pathPiece = ClassP ''PathPiece
                                [ keyT master v]
-            yp        = ClassP ''YesodPersist 
+            yp        = ClassP ''YesodPersist
                                [ VarT $ mkName master ]
 
 -- | Generate dispatch instance for selection and crud subsites.
@@ -99,7 +104,6 @@ get      = methods ["GET"]
 post     = methods ["POST"]
 getPost  = methods ["GET","POST"]
 
-
 stringP :: String -> (CheckOverlap, Piece typ)
 intP    :: (CheckOverlap, Piece Type)
 keyP    :: String -> String -> (CheckOverlap, Piece Type)
@@ -116,17 +120,17 @@ keyT master val = foldl AppT keyCon [AppT ypb m, v]
            keyCon  = ConT $ ''Key
 
 
-           
+
 
 adminType :: Name -> String -> String -> Type
-adminType n m v = foldl AppT (ConT n) 
+adminType n m v = foldl AppT (ConT n)
                         $ map (VarT . mkName) [m,v]
 
 
 crudType :: String -> String -> Type
 selectionType :: String -> String -> Type
-crudType      = adminType ''Crud
-selectionType = adminType ''Selection
+crudType      = adminType $ mkName "Crud"
+selectionType = adminType $ mkName "Selection"
 
 
 -- | Generate an instance of @'YesodDispatch'@.
@@ -137,7 +141,7 @@ mkDispatchInstance :: CxtQ       -- ^ The context
                    -> DecQ
 mkDispatchInstance context sub master res = instanceD context
                                                    yDispatch
-                                                   [thisDispatch]   
+                                                   [thisDispatch]
         where clauses  = mkDispatchClause [|yesodRunner|]
                                           [|yesodDispatch|]
                                           [|fmap chooseRep|]
@@ -148,36 +152,35 @@ mkDispatchInstance context sub master res = instanceD context
 -- | Generate dispatch instance for @'Crud'@ subsite.
 dispatchCrud :: String -> String -> DecQ
 dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
-   where c        = cxt $ ps : commonPredQs m v
-         ps       = classP ''PersistStore [ yBackend, handler]
-         crudT    = [t| Crud $mT $vT |]
+   where c        = cxt $ commonPredQs m v
+         crudT    = return $ crudType m v
          mT       = varT $ mkName m
-         vT       = varT $ mkName v
-         yBackend = [t| YesodPersistBackend $mT |]
-         handler  = [t| GHandler $crudT $mT |]
 
 -- | Generate dispatch instance for @'Selection'@ subsite.
 dispatchSelection :: String -> String -> DecQ
 dispatchSelection m v = mkDispatchInstance c selT mT
-                                           selectionResources
-   where c       = cxt $ commonPredQs m v ++ [pq, lc, rmAc]
+                            $ selectionResources m v
+   where c       = cxt $ commonPredQs m v ++ [pq, rmAc]
          pq      = classP ''PersistQuery [ yBackend, handler]
-         selT    = [t| Selection $mT $vT |]
+         selT    = return $ selectionType m v
          mT      = varT $ mkName m
          vT      = varT $ mkName v
-         actionT = conT ''Action `appT` vT
-         lc      = classP ''LiftCrudRoutes [ mT, vT]
          rmAc    = classP ''RenderMessage [ mT, actionT]
+         actionT =  [t| Action $vT |]
          yBackend = [t| YesodPersistBackend $mT |]
          handler  = [t| GHandler $selT $mT |]
 
 commonPredQs :: String -> String -> [PredQ]
-commonPredQs m v  = [yp, pp, rmAM, rmAt]
+commonPredQs m v  = [yp, pp, ps, rmAM, rmAt]
    where yp       = classP ''YesodPersist [ mT ]
          pp       = classP ''PathPiece    [ key ]
+         ps       = classP ''PersistStore [ yBackend, handler]
          rmAM     = classP ''RenderMessage [ mT, conT ''AdminMessage ]
          rmAt     = classP ''RenderMessage [ mT, attributeT]
          key      = [t| Key (YesodPersistBackend $mT) $vT |]
          mT       = varT $ mkName m
          vT       = varT $ mkName v
-         attributeT = conT ''Attribute `appT` vT
+         attributeT = [t| Attribute $vT |]
+         yBackend = [t| YesodPersistBackend $mT |]
+         handler  = [t| GHandler $crudT $mT |]
+         crudT    = return $ crudType m v

@@ -19,7 +19,7 @@ module Yesod.Admin.TH.Site
        -- $adminRoutes
        -- * Default admin home page.
        -- $defaultPage
-       -- * Separating dispatch and route construction 
+       -- * Separating dispatch and route construction
        -- $separate
        , mkAdminData
        , mkAdminDispatch
@@ -48,19 +48,17 @@ import Yesod.Admin.Class
 -- here requires an extra string argument which is the name of the
 -- constructor where the SiteAdmin is to be hooked.
 --
--- 
+--
 
 
 -- | Create an admin subsite.
 mkAdminSite :: Bool     -- ^ should generate selection subsite?
             -> String   -- ^ Foundation type
-            -> String   -- ^ The constructor of the url where admin
-                        -- site is hooked. E.g AdminR
             -> [String] -- ^ Entities
             -> DecsQ
-mkAdminSite genSel master adminR ens
+mkAdminSite genSel master ens
             = do aData <- mkAdminData genSel master ens
-                 disp  <- mkAdminDispatch genSel master adminR ens
+                 disp  <- mkAdminDispatch genSel master ens
                  return $ disp ++ aData
 
 -- | This function is similar to the `mkAdminSite` function but does
@@ -86,24 +84,19 @@ mkAdminData genSel master ens
 mkAdminDispatch :: Bool      -- ^ Generate the selection subsite or
                              -- not.
                 -> String    -- ^ Foundation type
-                -> String    -- ^ Admin root constructor
                 -> [String]  -- ^ The entities
                 -> DecsQ
-mkAdminDispatch genSel master adminR ens
-     | genSel = do disp <- mkAdminDispatch' genSel master ens
-                   lCs  <- mkCode (mkLiftCrudRoutes master adminR) ens
-                   return $ disp:lCs
-     | otherwise = fmap (:[]) $ mkAdminDispatch' genSel master ens
-
--- | The dispatch instance generating workhorse.
-mkAdminDispatch' :: Bool     -- ^ Whether to create selection subsite
-                 -> String   -- ^ Foundation type
-                 -> [String] -- ^ Entities
-                 -> DecQ
-mkAdminDispatch' genSel master = genAdminDispatch mT aT
-                               . mkAdminResources genSel
-      where aT  = conT $ mkName $ adminSiteType master
-            mT  = conT $ mkName master
+mkAdminDispatch genSel master ens
+     = sequence [instanceD (cxt []) yDispatch
+                           [funD 'yesodDispatch [clz]]]
+      where  yDispatch = conT ''YesodDispatch `appT` aT `appT` mT
+             aT  = conT $ mkName $ adminSiteType master
+             mT  = conT $ mkName master
+             clz       = mkDispatchClause [|yesodRunner|]
+                                          [|yesodDispatch|]
+                                          [|fmap chooseRep|]
+                                          res
+             res       = mkAdminResources genSel ens
 
 -- | This generates the admin aliases for each entry.
 mkAdminAliases :: Bool     -- ^ Generate selection subsite or not.
@@ -154,20 +147,6 @@ mkEntityAdminAliases genSel master en | genSel    = sequence $ crudA ++ selA
                  , defGet (selTypeName en) "Selection"
                  ]
 
-
-genAdminDispatch :: TypeQ    -- ^ Admin type
-                 -> TypeQ    -- ^ master type
-                 -> [Resource Type]
-                 -> DecQ
-genAdminDispatch mT aT res = instanceD (cxt []) yDispatch
-                                       [funD 'yesodDispatch [clz]]
-      where  yDispatch = conT ''YesodDispatch `appT` aT `appT` mT
-             clz       = mkDispatchClause [|yesodRunner|]
-                                          [|yesodDispatch|]
-                                          [|fmap chooseRep|]
-                                          res
-
-
 homeRes :: Resource Type
 homeRes = Resource "AdminHomeR" [] $ Methods Nothing ["GET"]
 
@@ -178,20 +157,6 @@ mkSelAliases master entity = sequence [ defSelType master entity
                                       , defGet (selTypeName entity)
                                                "Selection"
                                       ]
-
-mkLiftCrudRoutes :: String      -- ^ Foundation type
-                 -> String      -- ^ admin Root constructor
-                 -> String      -- ^ entity
-                 -> DecsQ
-
-mkLiftCrudRoutes master adminR  entity
-                 = [d| instance LiftCrudRoutes $mT $eT where
-                                liftCrudR = $adminRC . $crudC
-                   |]
-             where eT       = varT $ mkName entity
-                   mT       = conT $ mkName master
-                   adminRC  = conE $ mkName adminR
-                   crudC    = conE $ mkName $ crudCons entity
 
 defAdmin   :: String        -- ^ Foundation type
            -> DecsQ
@@ -257,9 +222,6 @@ selCons  :: String -> String
 -- the TH code generates the subsite @SiteAdmin@ which you can hook
 -- into the route of your foundation type @Site@. Let @AdminR@ be the
 -- corresponding constructor.
--- 
+--
 crudCons ty = crudTypeName ty ++ "R"
 selCons ty  = selTypeName ty ++ "R"
-
-
-
