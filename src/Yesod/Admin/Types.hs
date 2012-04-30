@@ -5,7 +5,9 @@ This modules defines some type convenient type aliases
 -}
 
 module Yesod.Admin.Types
-       ( Crud(..)
+       ( Admin
+       , getAdmin
+       , Crud(..)
        , Selection(..)
        , SiteKey
        , SiteKVPair
@@ -25,6 +27,18 @@ data Crud master v = Crud
 
 -- | The selection subsite
 data Selection master v = Selection
+
+-- | The admin subsite. This is the site that has the crud and
+-- selection subsites of all the entities of your application. You can
+-- hook this site as a subsite to your main site. However, the routes
+-- and dispatch instance for this site can only be declared at the
+-- time of use as the entities that we want to have an admin subsites
+-- for is known only at that time.
+data Admin master = Admin
+
+-- | Function used to hook the admin subsite into the main site.
+getAdmin :: master -> Admin master
+getAdmin = const Admin
 
 {-|
 
