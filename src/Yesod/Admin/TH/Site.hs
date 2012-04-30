@@ -37,17 +37,10 @@ import Yesod.Admin.Class
 -- $basicIdea
 --
 -- Let @Site@ by your foundation type. The TH code in this module
--- helps create the subsite data type @SiteAdmin@. The crud and
--- selection subsites for each entity will occur as subsites of
--- @SiteAdmin@. All that is left for the user is to hook @SiteAdmin@
--- as a subsite of the foundation type @Site@. However there is a
--- slight problem in this approach. To define the `LiftCrudRoutes` and
--- `LiftSelectionRoutes` instance one needs to know where the
--- @SiteAdmin@ subsite is hooked in the routes of @Site@. This mean
--- that one needs the corresponding constructors. This is why TH code
--- here requires an extra string argument which is the name of the
--- constructor where the SiteAdmin is to be hooked.
---
+-- helps create the subsite data type @SiteAdmin@. The crud/selection
+-- subsites for each entity will occur as subsites of @SiteAdmin@. All
+-- that is left for the user is to hook @SiteAdmin@ as a subsite of
+-- the foundation type @Site@.
 --
 
 
@@ -117,7 +110,7 @@ mkAdminResources genSel ens = homeRes : concatMap mkR ens
 mkEntityResource :: Bool   -- ^ Generate selection site or not
                  -> String -- ^ Entity
                  -> [Resource Type]
-mkEntityResource genSel en | genSel    = [cr,sr]
+mkEntityResource genSel en | genSel    = [sr]
                            | otherwise = [cr]
       where mkR c ps ty = Resource c [(True, Static p)| p <- ps]
                           $ Subsite (ConT $ mkName ty)
@@ -138,7 +131,7 @@ mkEntityAdminAliases :: Bool   -- ^ Generate selection site or not
                      -> String -- ^ Foundation site
                      -> String -- ^ Entity
                      -> DecsQ
-mkEntityAdminAliases genSel master en | genSel    = sequence $ crudA ++ selA
+mkEntityAdminAliases genSel master en | genSel    = sequence selA
                                       | otherwise = sequence crudA
    where crudA = [ defCrudType master en
                  , defGet (crudTypeName en) "Crud"
