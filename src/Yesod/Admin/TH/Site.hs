@@ -104,7 +104,7 @@ mkAdminAliases genSel master = fmap concat
 mkAdminResources :: Bool       -- ^ Generate selection site or not.
                  -> [String]   -- ^ Entities
                  -> [Resource Type]
-mkAdminResources genSel ens = homeRes : concatMap mkR ens
+mkAdminResources genSel ens = concatMap mkR ens
     where mkR  = mkEntityResource genSel
 
 mkEntityResource :: Bool   -- ^ Generate selection site or not
