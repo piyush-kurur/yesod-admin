@@ -15,7 +15,6 @@ module Yesod.Admin.Routes where
 import Yesod
 
 import Yesod.Admin.Types
-import Yesod.Admin.Class
 import Yesod.Admin.Resource
 
 mkAdminRoutes "master" "v"

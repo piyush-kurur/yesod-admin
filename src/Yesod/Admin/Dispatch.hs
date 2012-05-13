@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TemplateHaskell            #-}
-
+{-# LANGUAGE TypeFamilies               #-}
 {-
 
 Declares the yesod dispatch instance for the admin subsite. This is

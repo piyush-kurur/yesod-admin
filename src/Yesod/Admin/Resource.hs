@@ -10,7 +10,10 @@
 {-|
 
 This module defines the resource associated with the admin subsite.
-You will never have to look into this.
+We use the template haskell code exported by the yesod-routes package
+to define the @`RenderRoute`@ and @`YesodDispatch`@ instance for the
+crud and selection subsites. As a normal user you will never need to
+uses these functions.
 
 -}
 module Yesod.Admin.Resource
@@ -21,7 +24,6 @@ module Yesod.Admin.Resource
 import Yesod hiding (get)
 import Yesod.Admin.Class
 import Yesod.Admin.Message
-import Data.Default
 import Yesod.Routes.TH
 import Language.Haskell.TH
 
@@ -41,55 +43,74 @@ The routes are
 
 -- | These resources are meant for sites with a persistent backend
 -- which is an instance of @'PersistQuery'@.
-selectionResources :: String    -- ^ master
+selectionResources :: Type      -- ^ The selection backend type.
                    -> String    -- ^ entity
                    -> [Resource Type]
-selectionResources master v =
+selectionResources backend v =
         [ Resource "CrudR"   []  crudDispatch
         , Resource "ListR"   (string "selection") get
         , Resource "PageR"   [stringP "selection", intP] get
         , Resource "ActionR" (string "action") post
         ]
-     where crudDispatch = Subsite (crudType master v)
-                                  "getCrud"
-
+     where crudDispatch = Subsite (crudType backend v) "getCrud"
 
 -- | These resources are meant for sites with a persistent backend
 -- which is an instance of @'PersistStore'@.
-crudResources :: String   -- ^ master site
+crudResources :: Type     -- ^ The crud backend type
               -> String   -- ^ Entity type
               -> [Resource Type]
-crudResources master v =
+crudResources backend v =
         [ Resource "ReadR"   key $ get
         , Resource "CreateR" (string "create") $ getPost
         , Resource "UpdateR" (onKey "update" ) $ getPost
         , Resource "DeleteR" (onKey "delete" ) $ post
         ]
-        where onKey s = [ stringP s, keyP master v]
-              key     = [ keyP master v ]
+        where onKey s = [ stringP s, keyP backend v]
+              key     = [ keyP backend v ]
 
 -- | Create the @RenderRoute@ instances for both @Crud@ and
 -- @Selection@ subsites.
-mkAdminRoutes :: String -> String -> DecsQ
-mkAdminRoutes master v
-      = sequence [ mkI (crudType master v)
-                       (crudResources master v)
-                 , mkI (selectionType master v)
-                       $ selectionResources master v
+mkAdminRoutes :: String         -- ^ Backend type (variable)
+              -> String         -- ^ Entity
+              -> DecsQ
+mkAdminRoutes b v
+      = sequence [ mkI (crudType bT v)
+                       (crudResources bT v)
+                 , mkI (selectionType bT v)
+                       $ selectionResources bT v
                  ]
-      where mkI       = mkRenderRouteInstance' context
-            context   = [ yp, pathPiece ]
-            pathPiece = ClassP ''PathPiece
-                               [ keyT master v]
-            yp        = ClassP ''YesodPersist
-                               [ VarT $ mkName master ]
+      where mkI  = mkRenderRouteInstance' [ClassP ''PathPiece [keyT bT v]]
+            bT   = VarT $ mkName b
 
 -- | Generate dispatch instance for selection and crud subsites.
 mkAdminDispatch :: String -> String -> DecsQ
-mkAdminDispatch m v = sequence [ dispatchCrud m v
-                               , dispatchSelection m v
-                               ]
-
+mkAdminDispatch m v
+    = sequence [ mkDispatchInstance cCxt crudT mT $ crudResources  b v
+               , mkDispatchInstance sCxt selT  mT $ selectionResources b v
+               ]
+    where sCxt   = cxt $ comCxt ++ [ps, pq, rmAc]
+          cCxt   = cxt $ comCxt ++ [ps]
+          comCxt = [yp, eq , pp, rmAM, rmAt]
+          yp   = classP ''YesodPersist [mT]
+          pp   = classP ''PathPiece     [ kT ]
+          ps   = classP ''PersistStore  [bT, crudMonad ]
+          pq   = classP ''PersistQuery  [bT, selMonad  ]
+          rmAM = classP ''RenderMessage [mT, aM        ]
+          rmAt = classP ''RenderMessage [mT, attrT     ]
+          rmAc = classP ''RenderMessage [mT, actionT   ]
+          eq   = equalP bT [t|YesodPersistBackend $mT |]
+          crudMonad = [t|GHandler $crudT $mT  |]
+          selMonad  = [t|GHandler $selT $mT   |]
+          kT        = [t|Key $bT $vT|]
+          crudT     = return $ crudType b v
+          selT      = return $ selectionType b v
+          aM        = [t|AdminMessage  |]
+          attrT     = [t|Attribute $vT |]
+          actionT   = [t|Action    $vT |]
+          b         = VarT $ mkName "b"
+          bT        = return b
+          mT        = varT $ mkName m
+          vT        = varT $ mkName v
 
 string :: String -> [ (CheckOverlap, Piece typ) ]
 string s = [ stringP s ]
@@ -106,29 +127,26 @@ getPost  = methods ["GET","POST"]
 
 stringP :: String -> (CheckOverlap, Piece typ)
 intP    :: (CheckOverlap, Piece Type)
-keyP    :: String -> String -> (CheckOverlap, Piece Type)
+keyP    :: Type           -- ^ The backend type
+        -> String         -- ^ The entity
+        -> (CheckOverlap, Piece Type)
 
-stringP s       = (True, Static s)
-intP            = (True, Dynamic $ ConT ''Int)
-keyP master val = (True, Dynamic $ keyT master val)
+stringP s        = (True, Static s)
+intP             = (True, Dynamic $ ConT ''Int)
+keyP backend val = (True, Dynamic $ keyT backend val)
 
-keyT :: String -> String -> Type
-keyT master val = foldl AppT keyCon [AppT ypb m, v]
-     where m       = VarT $ mkName master
-           v       = VarT $ mkName val
-           ypb     = ConT $ ''YesodPersistBackend
-           keyCon  = ConT $ ''Key
+keyT :: Type     -- ^ The backedn type
+     -> String   -- ^ The entity
+     -> Type
+keyT backend val = ConT ''Key `AppT` backend `AppT` v
+     where v       = VarT $ mkName val
 
+adminType :: Name -> Type -> String -> Type
+adminType n b v = (ConT n) `AppT` b `AppT` vT
+          where vT = VarT $ mkName v
 
-
-
-adminType :: Name -> String -> String -> Type
-adminType n m v = foldl AppT (ConT n)
-                        $ map (VarT . mkName) [m,v]
-
-
-crudType :: String -> String -> Type
-selectionType :: String -> String -> Type
+crudType :: Type -> String -> Type
+selectionType :: Type -> String -> Type
 crudType      = adminType $ mkName "Crud"
 selectionType = adminType $ mkName "Selection"
 
@@ -140,47 +158,11 @@ mkDispatchInstance :: CxtQ       -- ^ The context
                    -> [Resource Type] -- ^ The resource
                    -> DecQ
 mkDispatchInstance context sub master res = instanceD context
-                                                   yDispatch
-                                                   [thisDispatch]
+                                                      yDispatch
+                                                      [thisDispatch]
         where clauses  = mkDispatchClause [|yesodRunner|]
                                           [|yesodDispatch|]
                                           [|fmap chooseRep|]
                                           res
               thisDispatch    = funD 'yesodDispatch [clauses]
               yDispatch = conT ''YesodDispatch `appT` sub `appT` master
-
--- | Generate dispatch instance for @'Crud'@ subsite.
-dispatchCrud :: String -> String -> DecQ
-dispatchCrud m v = mkDispatchInstance c crudT mT $ crudResources m v
-   where c        = cxt $ commonPredQs m v
-         crudT    = return $ crudType m v
-         mT       = varT $ mkName m
-
--- | Generate dispatch instance for @'Selection'@ subsite.
-dispatchSelection :: String -> String -> DecQ
-dispatchSelection m v = mkDispatchInstance c selT mT
-                            $ selectionResources m v
-   where c       = cxt $ commonPredQs m v ++ [pq, rmAc]
-         pq      = classP ''PersistQuery [ yBackend, handler]
-         selT    = return $ selectionType m v
-         mT      = varT $ mkName m
-         vT      = varT $ mkName v
-         rmAc    = classP ''RenderMessage [ mT, actionT]
-         actionT =  [t| Action $vT |]
-         yBackend = [t| YesodPersistBackend $mT |]
-         handler  = [t| GHandler $selT $mT |]
-
-commonPredQs :: String -> String -> [PredQ]
-commonPredQs m v  = [yp, pp, ps, rmAM, rmAt]
-   where yp       = classP ''YesodPersist [ mT ]
-         pp       = classP ''PathPiece    [ key ]
-         ps       = classP ''PersistStore [ yBackend, handler]
-         rmAM     = classP ''RenderMessage [ mT, conT ''AdminMessage ]
-         rmAt     = classP ''RenderMessage [ mT, attributeT]
-         key      = [t| Key (YesodPersistBackend $mT) $vT |]
-         mT       = varT $ mkName m
-         vT       = varT $ mkName v
-         attributeT = [t| Attribute $vT |]
-         yBackend = [t| YesodPersistBackend $mT |]
-         handler  = [t| GHandler $crudT $mT |]
-         crudT    = return $ crudType m v
