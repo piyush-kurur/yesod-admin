@@ -19,7 +19,7 @@ getReadR :: ( Yesod master
             , b ~ YesodPersistBackend master
             , PathPiece (Key b v)
             )
-          => Key b v  -- ^ The
+          => Key b v             -- ^ The Id of the object to read
           -> CrudHandler master v RepHtml
 getReadR k = defaultLayout $ do
        toWidget [hamlet|Should display object of Id #{toPathPiece k}|]
