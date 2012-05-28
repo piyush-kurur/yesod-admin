@@ -14,12 +14,13 @@ import Text.Hamlet
 import Yesod
 import Yesod.Auth
 import Yesod.Admin.Class
+import Yesod.Admin.Types
 
 -- | This function checks whether the authenticated user is an admin user. It 
 -- gives the login page if not authenticated and checks admin permissions if
 -- the user is already authenticated.
 
-withAdminUser :: ( HasAdminUser master
+withAdminUser :: ( HasAdminUsers master
                  , HasAdminLayout master
                  , Monad (YesodDB sub master)
                  )
@@ -29,7 +30,7 @@ withAdminUser action = do aid <- requireAuthId
                           allow <- runDB $ isAdminUser aid
                           if allow then action aid
                              else do adminPermissionDenied
-runDBWithAuthId :: ( HasAdminUser master
+runDBWithAuthId :: ( HasAdminUsers master
                    , HasAdminLayout master
                    , Monad (YesodDB sub master)
                    )
