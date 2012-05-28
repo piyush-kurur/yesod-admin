@@ -1,0 +1,3 @@
+<div .button .#{T.concat clzs}>
+     <a href=@{link}>
+        _{name}

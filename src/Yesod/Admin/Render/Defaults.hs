@@ -13,13 +13,44 @@ module Yesod.Admin.Render.Defaults
        ( defaultListing
        , defaultAdminLayout
        , defaultAdminStyles
+       , defaultAttributeDisplay
        ) where
 
-import Data.Text(Text)
+import qualified Data.Text as T
 import Text.Hamlet
 import Text.Cassius
 import Yesod
 import Yesod.Admin.Render
+import Yesod.Admin.Message
+
+type Text = T.Text
+
+
+mkZebraAttrs :: [(a,b)] -> [(Text,a,b)]
+mkZebraAttrs = zipWith f $ cycle ["odd","even"]
+    where f z (a,b) = (z,a,b)
+
+renderButton :: ( RenderRoute master
+                , RenderMessage master AdminMessage
+                ) => Button master -> GWidget sub master ()
+renderButton button = $(whamletFile "templates/render/default/button.hamlet")
+         where link = buttonLink button
+               name = buttonName button
+               clzs = buttonClass button
+
+defaultAttributeDisplay :: ( RenderRoute master
+                           , RenderMessage master (AdminMessage)
+                           , RenderMessage master t
+                           , RenderMessage master attr
+                           )
+                           => AttributeDisplay master t attr
+                           -> GWidget sub master ()
+
+defaultAttributeDisplay dsp =
+        $(whamletFile "templates/render/default/attribute-display.hamlet")
+      where title      = displayTitle dsp
+            zebraAttrs = mkZebraAttrs $ displayAttrList dsp
+            buttons    = map renderButton $ controlButtons dsp
 
 defaultListing :: Listing master -> GWidget sub master ()
 defaultListing lst = addWidget [whamlet|
@@ -42,16 +73,16 @@ defaultListing lst = addWidget [whamlet|
             objects = if totalObjects lst > 1 then listingPlural lst
                       else listingSingular lst
 
-mkLink route t = toWidget [hamlet| 
+mkLink route t = toWidget [hamlet|
                     <td>
                         <a href=@{route}> #{t}
                     |]
-  
+
 
 mkText t = toWidget [shamlet| <td> #{t} |]
 
 -- | The layout to use for admin pages.
-defaultAdminLayout :: Yesod master 
+defaultAdminLayout :: Yesod master
             => GWidget sub master ()
             -> GHandler sub master RepHtml
 
@@ -100,7 +131,7 @@ highlightWidth :: Text
 highlightColour :: Text
 highlightWidth   = "thin"   :: Text
 highlightColour  = "black"   :: Text
- 
+
 
 penColour :: Text
 penColour = "black"     :: Text

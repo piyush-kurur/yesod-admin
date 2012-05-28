@@ -12,16 +12,32 @@ rest of the admin code.
 
 -}
 module Yesod.Admin.Render
-       ( Listing(..)
+       ( Button (..)
+       , AttributeDisplay(..)
+       , Listing(..)
        ) where
 
 import Data.Text(Text)
 import Yesod
+import Yesod.Admin.Message
+
+-- | A button.
+data Button master = Button { buttonLink  :: Route master
+                            , buttonName  :: AdminMessage
+                            , buttonClass :: [Text]
+                            }
+-- | Displaying an object.
+
+data AttributeDisplay master t attr
+              = AttributeDisplay { displayTitle     :: t
+                                 , displayAttrList  :: [(attr, Text)]
+                                 , controlButtons   :: [Button master]
+                                 }
 
 -- | Admin pages show the listing of objects. This is the data type
 -- that controls it.
 
-data Listing master = Listing { listingSingular     :: Text 
+data Listing master = Listing { listingSingular     :: Text
                                       -- ^ Singular name
                               , listingPlural       :: Text
                                       -- ^ Plural name

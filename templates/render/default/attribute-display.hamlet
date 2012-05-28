@@ -1,0 +1,11 @@
+<h1 .title>_{title}
+<table .attributes>
+  $forall (z,a,v) <- zebraAttrs
+    <tr .attribute .#{z}>
+       <td> _{a}
+       <td> #{v}
+    <tr .button-row>
+      <td>
+        $forall b <- buttons
+          ^{b}
+

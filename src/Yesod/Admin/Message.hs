@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings  #-}
+
 {-|
 
 All the messages used by Yesod admin site. Declare `RenderMessage`
@@ -40,7 +41,7 @@ data AdminMessage = MsgAdminCreate
 -- want to give an object range, e.g. 1 to 10 of 100 users. Define a
 -- @`RenderMessage`@ instance for this type to get i18n support. See
 -- also the function @`defaultRenderObjectSet`@
-data PersistEntity v => Collective v
+data Collective v
      = Collection Int      -- ^ numeric form. E.g 10 users
      | Singular            -- ^ Singular form. E.g user
      | Plural              -- ^ Collective form. E.g users
