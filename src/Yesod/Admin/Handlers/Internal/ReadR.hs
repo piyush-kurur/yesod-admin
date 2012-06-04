@@ -13,9 +13,12 @@ module Yesod.Admin.Handlers.Internal.ReadR
 import Yesod
 import Yesod.Admin.Types
 import Yesod.Admin.Handlers.Internal.Helpers
+import Yesod.Admin.Class
+import Yesod.Admin.Render
 
 getReadR :: ( Yesod master
             , YesodPersist master
+	    , HasAdminRendering master
             , b ~ YesodPersistBackend master
             , PathPiece (Key b v)
             )
