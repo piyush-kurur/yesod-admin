@@ -22,10 +22,14 @@ module Yesod.Admin.Resource
        ) where
 
 import Yesod hiding (get)
-import Yesod.Admin.Class
-import Yesod.Admin.Message
-import Yesod.Routes.TH
 import Language.Haskell.TH
+import Yesod.Routes.TH
+
+import Yesod.Admin.Class
+import Yesod.Admin.Render
+import Yesod.Admin.Message
+
+
 
 {-
 
@@ -90,15 +94,17 @@ mkAdminDispatch m v
                ]
     where sCxt   = cxt $ comCxt ++ [ps, pq, rmAc]
           cCxt   = cxt $ comCxt ++ [ps]
-          comCxt = [yp, eq , pp, rmAM, rmAt]
+          comCxt = [yp, eq , pp, rmAM, rmAt, hAR]
           yp   = classP ''YesodPersist [mT]
           pp   = classP ''PathPiece     [ kT ]
           ps   = classP ''PersistStore  [bT, crudMonad ]
           pq   = classP ''PersistQuery  [bT, selMonad  ]
+          hAR   = classP ''HasAdminRendering [mT]
           rmAM = classP ''RenderMessage [mT, aM        ]
           rmAt = classP ''RenderMessage [mT, attrT     ]
           rmAc = classP ''RenderMessage [mT, actionT   ]
           eq   = equalP bT [t|YesodPersistBackend $mT |]
+          
           crudMonad = [t|GHandler $crudT $mT  |]
           selMonad  = [t|GHandler $selT $mT   |]
           kT        = [t|Key $bT $vT|]
