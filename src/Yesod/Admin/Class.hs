@@ -60,10 +60,6 @@ module Yesod.Admin.Class
        , HasAdminUsers (..)
        , CrudControl (..)
        , SelectionControl (..)
-       -- * Controlling layout and style.
-       , HasAdminLayout (..)
-       -- * Lifting admin routes.
-       -- $liftRoutes
        ) where
 
 import Data.ByteString (ByteString)
@@ -76,7 +72,6 @@ import Yesod.Form
 import Yesod.Auth
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.Types
-import Yesod.Admin.Render.Defaults
 import Text.Hamlet
 
 {-|
@@ -260,58 +255,6 @@ class ( YesodAuth master
                   -- default admin users.
       isAdminUser   = isSuperUser
       isSuperUser _ = return False
-
--- | All functions in the admin handlers generate abstract admin pages
--- like admin listings, admin forms etc.  which needs to be rendered
--- as HTML/CSS. This class configures how those abstract pages are
--- rendered. The default rendering uses the combinators defined in the
--- module "Yesod.Admin.Render.Defaults" and should work for you (you
--- might want to change the branding though). On the other hand you
--- can design a new admin "skin" and redefine all the members
--- here. You can get quite a bit of configuration by just changing the
--- styles used. To do this modify `adminStyles`.
-
-class Yesod master => HasAdminLayout master where
-
-      -- | Sets the branding of the admin site. Being a widget you can
-      -- perform arbitrary widget actions like adding styles
-      -- here. However it is better to keep it simple and delegate
-      -- those to other members (like adminStyles) of the class.
-
-      branding   :: GWidget sub master ()
-      branding   = do toWidget [shamlet|Yesod Admin|]
-
-      -- | Toolbar for your admin site. This is where you might want
-      -- to include a welcome message and/or login, logout links.
-
-      toolBar    :: GWidget sub master ()
-      toolBar    = return ()
-
-      -- | Sets up the styles to use on admin pages. While you can
-      -- have arbitray widget code here, it is better to add only the
-      -- style related stuff here. This way you can change the style
-      -- without making any changes to the code what so ever.
-
-      adminStyles :: GWidget sub master ()
-      adminStyles = defaultAdminStyles
-
-      -- | The layout of the admin site. This is where you do the
-      -- final tweaks to the widget before you send it out to the
-      -- world. The purpose of this is similar to that of
-      -- `defaultLayout` in the `Yesod` class but this is restricted
-      -- to only the admin pages of this site.
-
-      adminLayout :: GWidget sub master a  -- ^ The admin widget to render
-                  -> GHandler sub master RepHtml
-      adminLayout content
-                  = defaultAdminLayout
-                            $  adminStyles
-                            >> [whamlet|
-                                    <div .branding> ^{branding}
-                                    <div .toolbar>  ^{toolBar}
-                                    <div .content>  ^{content'}
-                               |]
-           where content' = content >> return ()
 
 
 -- | The class defines the access control for crud operations.

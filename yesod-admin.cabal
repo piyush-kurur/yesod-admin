@@ -29,7 +29,7 @@ Library
                  , Yesod.Admin.Message
                  , Yesod.Admin.Message.English
                  , Yesod.Admin.Render
-                 , Yesod.Admin.Render.Defaults
+                 , Yesod.Admin.Render.Default
                  , Yesod.Admin.TH.Site
    --                 , Yesod.Admin.Handlers
   

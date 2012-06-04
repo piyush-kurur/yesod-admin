@@ -9,18 +9,16 @@ Default rendering of primitives.
 
 -}
 
-module Yesod.Admin.Render.Defaults
-       ( defaultListing
-       , defaultAdminLayout
+module Yesod.Admin.Render.Default
+       ( defaultAdminLayout
        , defaultAdminStyles
-       , defaultAttributeDisplay
+--       , defaultAttributeDisplay
        ) where
 
 import qualified Data.Text as T
 import Text.Hamlet
 import Text.Cassius
 import Yesod
-import Yesod.Admin.Render
 import Yesod.Admin.Message
 
 type Text = T.Text
@@ -29,7 +27,7 @@ type Text = T.Text
 mkZebraAttrs :: [(a,b)] -> [(Text,a,b)]
 mkZebraAttrs = zipWith f $ cycle ["odd","even"]
     where f z (a,b) = (z,a,b)
-
+{-
 renderButton :: ( RenderRoute master
                 , RenderMessage master AdminMessage
                 ) => Button master -> GWidget sub master ()
@@ -43,14 +41,16 @@ defaultAttributeDisplay :: ( RenderRoute master
                            , RenderMessage master t
                            , RenderMessage master attr
                            )
-                           => AttributeDisplay master t attr
+                           => t
+                           -> [(attr,Text)]
+                           -> [Button master]
                            -> GWidget sub master ()
 
-defaultAttributeDisplay dsp =
+defaultAttributeDisplay title attrs bs =
         $(whamletFile "templates/render/default/attribute-display.hamlet")
-      where title      = displayTitle dsp
-            zebraAttrs = mkZebraAttrs $ displayAttrList dsp
-            buttons    = map renderButton $ controlButtons dsp
+      where zebraAttrs = mkZebraAttrs attrs
+            buttons    = map renderButton bs
+
 
 defaultListing :: Listing master -> GWidget sub master ()
 defaultListing lst = addWidget [whamlet|
@@ -73,6 +73,7 @@ defaultListing lst = addWidget [whamlet|
             objects = if totalObjects lst > 1 then listingPlural lst
                       else listingSingular lst
 
+
 mkLink route t = toWidget [hamlet|
                     <td>
                         <a href=@{route}> #{t}
@@ -81,21 +82,17 @@ mkLink route t = toWidget [hamlet|
 
 mkText t = toWidget [shamlet| <td> #{t} |]
 
+-}
+
 -- | The layout to use for admin pages.
 defaultAdminLayout :: Yesod master
-            => GWidget sub master ()
-            -> GHandler sub master RepHtml
-
-defaultAdminLayout w = do p <- widgetToPageContent w
-                          hamletToRepHtml [hamlet|
-                             !!!
-                             <html>
-                                <head>
-                                        <title>#{pageTitle p}
-                                        ^{pageHead p}
-                                <body>
-                                        ^{pageBody p}
-                             |]
+                   => GWidget sub master ()
+                   -> GHandler sub master RepHtml
+defaultAdminLayout w =
+  do p <- widgetToPageContent w
+     hamletToRepHtml
+       $(hamletFile "templates/render/default/admin-layout.hamlet")
+                            
 
 
 defaultAdminStyles :: GWidget sub master ()
