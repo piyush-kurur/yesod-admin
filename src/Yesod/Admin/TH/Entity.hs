@@ -11,21 +11,20 @@ Module to generate admin code for persistent entries.
 
 module Yesod.Admin.TH.Entity
        (
-       -- * Admin section.
+       -- * Admin section
+       
        -- $adminSection
-       -- ** Allowed fields.
+         
+       -- ** Allowed fields
+       
        -- $adminFields
+         
+       -- ** Constructors
+       
+       -- $Constructors
 
-       -- * Attributes
-       -- $attributeName
-       -- ** Attribute constructors.
-       -- $attributeConstructors
-       -- * Admin Actions.
-       -- $actionNames
-       -- ** Action constructors.
-       -- $actionConstructors
-
-         AdminInterface(..)
+         
+          AdminInterface(..)
        , mkAdminInstances
        , entityDefToInterface
        , deriveInlineDisplay
@@ -50,10 +49,11 @@ import Yesod.Admin.Class
 
 type Text = T.Text
 
--- $adminSection To define the admin interface for a persistent
--- objects one needs to define and admin section in the persistent
--- object definition. For example look at the definition of person in
--- the following code.
+-- $adminSection
+--
+-- To define the admin interface for a persistent objects one needs to
+-- define and admin section in the persistent object definition. For
+-- example look at the definition of person in the following code.
 --
 -- >      [persist|
 -- >                Person
@@ -64,25 +64,29 @@ type Text = T.Text
 -- >                        Admin
 -- >                            inline NameAndEmail
 -- >                            list   name email age
--- >                            title name Full Name
+-- >
 -- >     |]
 --
 -- In the above code snippet, we have defined the /fields/ @inline@,
--- @list@ and @title@.
+-- and @list@.
+
+
 
 -- $adminFields
--- 
+--
+-- The allowed fields in the admin section are the following 
+--
 -- [@action@] A list of allowed admin actions. Should occur at most
 --    once. The words in the the list should contain either (1) the
---    word "delete" (delete) (2) a word starting with a small case
+--    word \"delete\" (delete) (2) a word starting with a small case
 --    letter (update action) or (3) a word starting with a upper case
 --    letter (a custom action). The textual representation is obtained
 --    by taking the un-camelcased version of the name. E.g. a line of
 --    the form @action delete confirmRegistration Bar@ means that the
---    object supports delete, an update action titled "Confirm
---    registration" give by the variable confirmRegistration and a
---    custom action @Bar@ given by the variable @bar@. Here bar shold
---    have the type $Key b v -> b m v$
+--    object supports delete, an update action titled \"Confirm
+--    registration\" give by the variable confirmRegistration and a
+--    custom action @Bar@ given by the variable @bar@. Here bar should
+--    have the type @'Key' b v -> b m v@
 --
 -- [@inline@] Attribute used in the inline display of the
 --    object. Should occur at most once in the admin section. There
@@ -102,7 +106,9 @@ type Text = T.Text
 --
 -- [@show@] The list of attributes that are shown on the read page of
 --    the object. This defaults to all the database attributes.
---
+
+
+
 
 -- | This datatype controls the admin site generate via the template
 -- haskell functions of this module. Having defined this type you can
@@ -519,47 +525,17 @@ fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
 funcName :: Text -> Text
 funcName =  unCapitalise
 
-
--- $ActionName
+-- $Constructors
 --
--- The action field of an persistent entity can contain a list of one
--- or more action names. An action name can be one of the following:
+-- We now describe the constructors of the associated types
+-- @`Attribute`@ and @`Action`@ that the TH code generates.  Knowing
+-- this name is required if you want overide their titles.
 --
---   1. The string "delete" that captures the delete action.
---
---   2. A string that starts with an lower case letter e.g. @confirm@
---   in which case it is an update action. For such an action, there
---   should be an appropriate update defined within the scope where
---   the TH code is called. For e.g. if one uses the string @confirm@
---   in the action field of the entity @Registration@ say, then one
---   needs to define the function @registrationConfirmUpdate@ of type
---   @Update Registration@.
---
---   3. A string that starts with a upper case letter e.g. @FooBar@ in
---   which case it denotes a custom action. There should also be a
---   function with the name @fooBar@ in this case, of type @Key b v ->
---   b m v@.
---
--- The drop down menu in the selection list will list each action in
--- the same order as given in the action field.
-
-isDelete :: Text -> Bool
-isUpdate :: Text -> Bool
-isCustomAction :: Text -> Bool
-
-isDelete  = (==) "delete"
-isUpdate  = isLower . T.head
-isCustomAction = isUpper . T.head
-
--- $attributeConstructors
---
--- The TH code generates one constructor for each database entry plus
--- what ever constructed attributes are used in list field. The
--- constructors are the following.
+-- The constructors for Attributes are as follows:
 --
 --  1. For a database attribute the constructor is camel cased
 --  concatenation of the entity name, the attribute name and the
---  string "Attribute". For example the database column @name@ of
+--  string \"Attribute\". For example the database column @name@ of
 --  entity Person will give a constructor @PersonNameAttribute@
 --
 --  2. For a constructed attribute corresponding to a function, the
@@ -567,6 +543,22 @@ isCustomAction = isUpper . T.head
 --  capitalised. For example if the function name is @nameAndEmail@,
 --  the constructor will be @NameAndEmail@
 --
+-- The constructors for the administrative actions are as follows:
+--
+--  1. For the delete action the constructor is camel cased
+--  concatenation of the entity and the string
+--  \"DeleteAction\". E.g. @PersonDeleteAction@ for the entity
+--  @Person@.
+--
+--  2. For the update action it is camel cased concatenation of the
+--  entity name, name of the update and the string \"Update\". E.g
+--  @RegistrationConfirmUpdate@ for the update @confirm@ of the entity
+--  @Registration@.
+--
+--  3. For a custom action @FooBar@, the constructor will the action
+--  name itself.
+--
+
 
 attrs      :: AdminInterface -> [Text]
 attrs ai   = dbAttrs ai ++ derivedAttrs ai
@@ -580,23 +572,7 @@ attrCons = constructor "Attribute"
 attrConsP  :: Text -> Text -> PatQ
 attrConsP e attr = conP (mkNameT $ attrCons e attr) []
 
--- $actionConstructors
---
--- The TH code generates one constructor for each administrative
--- action. The constructors are the following.
---
---  1. For the delete action the constructor is camel cased
---  concatenation of the entity name, the string "Delete" and the
---  string "Action. E.g. @PersonDeleteAction@ for the entity @Person@.
 
---  2. For the update action it is camel cased concatenation of the
---  entity name, name of the update and the string "Update". E.g
---  @RegistrationConfirmUpdate@ for the update @confirm@ of the entity
---  @Registration@.
---
---  3. For a custom action @FooBar@, the constructor will the action
---  name itself.
---
 
 actionCons  :: Text    -- ^ Entity name
             -> Text    -- ^ Action name
@@ -642,3 +618,38 @@ constructor :: Text     -- ^ Suffix
 constructor s e m | T.null  m = ""
                   | isLower $ T.head m = camelCaseUnwords [e,m,s]
                   | otherwise = m
+
+
+-- $ActionName
+--
+-- The action field of an persistent entity can contain a list of one
+-- or more action names. An action name can be one of the following:
+--
+--   1. The string "delete" that captures the delete action.
+--
+--   2. A string that starts with an lower case letter e.g. @confirm@
+--   in which case it is an update action. For such an action, there
+--   should be an appropriate update defined within the scope where
+--   the TH code is called. For e.g. if one uses the string @confirm@
+--   in the action field of the entity @Registration@ say, then one
+--   needs to define the function @registrationConfirmUpdate@ of type
+--   @Update Registration@.
+--
+--   3. A string that starts with a upper case letter e.g. @FooBar@ in
+--   which case it denotes a custom action. There should also be a
+--   function with the name @fooBar@ in this case, of type @Key b v ->
+--   b m v@.
+--
+-- The drop down menu in the selection list will list each action in
+-- the same order as given in the action field.
+
+isDelete :: Text -> Bool
+isUpdate :: Text -> Bool
+isCustomAction :: Text -> Bool
+
+isDelete  = (==) "delete"
+isUpdate  = isLower . T.head
+isCustomAction = isUpper . T.head
+
+-- 
+
