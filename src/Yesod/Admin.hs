@@ -8,26 +8,24 @@ entities of your site import this module.
 
 module Yesod.Admin
        (
-       -- * Basic usage.
-       -- $basic
+       -- * Usage.
+       -- $usage
       
-       -- * Configuring the admin interfaces.
-       -- $configuring
-
 {-
        -- ** Access control.
        -- $accesscontrol
--}
+
        -- * Advanced usage (mostly for developers).
        -- $advanced
 
+-}
          module Yesod.Admin.Class
        , module Yesod.Admin.Types
        , module Yesod.Admin.TH
-       , module Yesod.Admin.Dispatch
+     --  , module Yesod.Admin.Dispatch
        , module Yesod.Admin.Routes
-       -- , module Yesod.Admin.Render
-       -- , module Yesod.Admin.Handlers
+       , module Yesod.Admin.Render
+       --, module Yesod.Admin.Handlers
        --, module Yesod.Admin.TH
        ) where
 
@@ -38,6 +36,84 @@ import Yesod.Admin.TH
 
 import Yesod.Admin.Routes
 import Yesod.Admin.Dispatch()
+
+
+{- $usage
+
+We give a quick description of how to use this library. Firstly make
+sure that your master site is an instances of
+
+   1. YesodPersist: Clearly you need this otherwise what will you
+      administer.
+
+   2. YesodAuth: What does access control mean without authentication?
+
+
+You then need to prepare your site for admin operations. This involves
+two steps:
+
+   1. Setting up a layout for your admin site and
+   2. Declaring who are the administrative users of your site.
+
+You can set up the layout by declaring your site to be an instance of
+the class `HasAdminRendering`. The default declaration will give you
+the default skin and that should be good enough for testing. However,
+feel free to change the layout.
+
+> instance HasAdminRendering Site where  -- use the default skin
+
+
+
+You can declare the administrative users of your site by declaring
+your site to be an instance of `HasAdminUsers`. The default
+declaration declares all users as non-admin users so you will most
+probably need to redeclare the member functions.
+
+> instance HasAdminUsers Site where
+>          isSuperUser authid = ....  -- define who are the super user
+>          isAdminUser authid = ....  -- define users who have some
+>                                     -- administrative privileges
+
+
+Both @`isSuperUser` authid@ and @`isAdminUser` authid@ are database
+actions, i.e @`YesodDB` sub Site Bool@, that returns a boolean value
+indicating whether the input userid are super users or admin users
+respectively. For details check the documentation @`HasAdminUsers`@.
+
+Each persistent entity for which the administrative interface is
+desired is to be prepared next. The simplest way to achieve this is to
+use the template haskell function @`mkAdminClasses`@. The
+administrative properties of an entity is controlled by the optional
+section named \"Admin\". If the admin section is not present a default
+admin interfaces is created. In the example below, the type @Person@
+will be listed using two fields name and age. For the type @Group@ the
+default administrative setting is used. Details on how to modify
+administrative setting is available in the documentation for the
+module "Yesod.Admin.TH.Entity".
+
+> share [ mkAdminClasses
+>       , mkPersist sqlSettings
+>       , mkMigrate "migrateAll"
+>       ]
+>       [persist|
+>                Person
+>                        name    Text
+>                        email   Text
+>                        age     Text
+>                        address Text
+>                        Admin
+>                               list name age
+>                Group
+>                       name    text
+>     |]
+
+
+Finally you need to hook all the administrative subsites of your
+persistent entities to your main site. The template haskell functions
+in the module "Yesod.Admin.TH.Site" is for that purpose.
+
+
+-}
 
 {- $concepts
 
@@ -69,80 +145,6 @@ objects of your site.
 
 An admin interface should give ways of configuring both the listing
 and the inline display.
-
--}
-
-{- $basic 
-
-We give a quick description of how use this library. Firstly make sure
-that your master site is an instances of
-
-   1. YesodPersist: Clearly you need this otherwise what will you
-      administer.
-
-   2. YesodAuth: What does access control mean without authentication
-
-Firstly you need to prepare your site for admin operations. This
-involves two steps (1) setting up a layout for your admin site and (2)
-declaring who are the administrative users of your site. You can set
-up the layout by declaring your site to be an instance of
-@`HasAdminLayout`@. The default declaration will give you the default
-skin and that should be good enough for testing. However, feel free to
-change the layout.
-
-> instance HasAdminLayout Site where  -- use the default skin
-
-You can declare the administrative users of your site by declaring
-your site to be an instance of @`HasAdminUsers`@. The default declartion
-declares all users as non-admin users so you will most probably need
-to redeclare the member functions.
-
-> instance HasAdminUsers Site where
->          isSuperUser authid = ....
->          isAdminUser authid = ....
-
-Both @`isSuperUser` authid@ and @`isAdminUser` authid@ are database
-actions, i.e. @'YesodDB' sub Site Bool@, that returns a boolean value
-indicating whether the input userid are super users or admin users
-respectively. For more details check "Yesod.Admin.Class"
-
-Next you need to prepare each entity that you need to administer.  The
-simplest way to achieve this is to use the template haskell function
-`mkAdminClasses`. The administrative properties of an entity is
-controlled by the section named Admin. In the example below, entities
-of type Person will be listed using two fields name and age. For
-groups the default administrative setting is used. For more details on
-how to modify default administrative settings check the module
-"Yesod.Admin.TH.Entity"
-
-
-> share [ mkAdminClasses
->       , mkPersist sqlSettings
->       , mkMigrate "migrateAll"
->       ]
->       [persist|
->                Person
->                        name    Text
->                        email   Text
->                        age     Text
->                        address Text
->                        Admin
->                               list name age
->                Group
->                       name    text
->     |]
-
--}
-
-{- $accesscontrol
-
-The default access control gives admin privileges to super users of
-your site and no one else. If this is not what is desired you need to
-declare the 'YesodAdmin' class instance for your entity. There is a
-variant `mkEntityAdmin` which does every thing that `mkYesodAdmin`
-does but for the declaration of the `YesodAdmin` instance. Use this
-variant and declare the `YesodAdmin` instance by hand. For more
-details refer to the module "Yesod.Admin.Class".
 
 -}
 
