@@ -144,7 +144,7 @@ entityDefToInterface ed = do ai    <- setFields
                              return $ aichk {derivedAttrs = derAttrs aichk }
    where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
          startAI        = defaultInterface ed
-         setFields      = foldl fld (Right $ startAI) adminLines
+         setFields      = foldl fld (Right startAI) adminLines
          en             = T.unpack $ name startAI
          fld eai (x:xs) = fieldSet en eai x xs
          fld eai []     = eai
@@ -165,15 +165,7 @@ fieldSet :: String
 fieldSet en eai "action" ts  = setAction   en eai ts
 fieldSet en eai "list"   ts  = setList     en eai ts
 fieldSet en eai "show"   ts  = setReadPage en eai ts
-fieldSet en _   "inline" []  = Left $ errMsg [ en
-                                             , "inline"
-                                             , " empty definition"
-                                             ]
-fieldSet en eai "inline" [t] = setInline en eai t
-fieldSet en _ "inline"   _   = Left $ errMsg [ en
-                                             , "inline"
-                                             , " too many args"
-                                             ]
+fieldSet en eai "inline" ts  = setInline   en eai ts
 fieldSet en _   f        _   = Left $ errMsg [ en
                                              , T.unpack f
                                              , " unknown field"
@@ -467,34 +459,45 @@ unSort t | T.head t == '+' = T.tail t
          | otherwise      = t
 
 
-
-
 setAction :: String -> Result -> [Text] -> Result
-setAction en = setOnce action (\ ai x -> ai { action = Just x })
-                    $ errMsg [ en, "action", " multiple definitions"]
-
-setInline :: String -> Result -> Text -> Result
-setInline en = setOnce inline (\ ai x -> ai { inline = Just x })
-                    $ errMsg [ en, "inline",  " multiple definitions"]
-
+setAction en = setOnce en "action" action setter
+        where setter ai x = ai { action = Just x }
+                            
+setInline :: String -> Result -> [Text] -> Result
+setInline en  _  []  = Left $ errEmpty en "inline"
+setInline en eai [t] = setOnce en "inline" inline setter eai t
+                      where setter ai x = ai { inline = Just x }
+setInline en  _  _ = Left $ errTooMany en "inline"
+               
 setList :: String -> Result -> [Text] -> Result
-setList en = setOnce list (\ ai x -> ai { list = Just x })
-                    $ errMsg [ en, "list", " multiple definitions"]
+setList en = setOnce en "list" list setter
+     where setter ai x = ai { list = Just x }
 
 setReadPage :: String -> Result -> [Text] -> Result
-setReadPage en = setOnce readPage (\ ai x -> ai { readPage = Just x })
-                    $ errMsg [ en, "show", " multiple definitions"]
+setReadPage en = setOnce en "show" readPage setter
+        where setter ai x = ai { readPage = Just x }
+                 
 
 
-setOnce :: (b -> Maybe x)
-        -> (b -> x -> b)
-        -> a
-        -> Either a b
+setOnce :: String         -- ^ Entity name
+        -> String         -- ^ Field name
+        -> (b -> Maybe x) -- ^ The field getter
+        -> (b -> x -> b)  -- ^ The field setter
+        -> Either String b
         -> x
-        -> Either a b
-setOnce g p a eb x = do b <- eb
-                        maybe (Right $ p b x) (const $ Left a) $ g b
+        -> Either String b
+setOnce en f g p eb x = do b <- eb
+                           maybe (Right $ p b x) err $ g b
+         where err = const $ Left  $ errMultiple en f
 
+-- Some errors
+errMultiple :: String -> String -> String
+errEmpty    :: String -> String -> String
+errTooMany  :: String -> String -> String
+
+errMultiple en f = errMsg [en, f, "multiple definition"]
+errEmpty    en f = errMsg [en, f, "empty definition"]
+errTooMany  en f = errMsg [en, f, "too many args"]
 
 -- $attributeName
 -- Attributes can be either
