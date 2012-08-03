@@ -74,8 +74,8 @@ defaultInterface ed
 
 -- | Parse the administrative interface from the entity definition.
 entityDefToInterface :: EntityDef -> Either String AdminInterface
-entityDefToInterface ed = do ai    <- setFields
-                             fmap setDefaults $ chk ai
+entityDefToInterface ed = do ai <- setFields
+                             chk $ setDefaults ai
                              
    where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
          startAI        = defaultInterface ed
@@ -228,17 +228,29 @@ fields.
 type Result = Either String AdminInterface
 
 checkAdminFields :: AdminInterface -> [String]
-checkAdminFields ai = combineErrs (T.unpack $ name ai)
+checkAdminFields ai = combineErrs en
                              $ concat [ inlineC
                                       , listC
                                       , rPC
                                       ]
-     where inlineC = chk "inline: "
-                         $ maybeToList $ inline ai
-           listC   = chk "list" $ map unSort $ fromMaybe [] $ list ai
-           rPC     = chk "show" $ fromMaybe [] $ readPage ai
-           chk msg = combineErrs msg . checkDBAttrs ai
+     where inlineC  = chk "inline: " $ maybeToList $ inline ai
+           lst      = map unSort    $ fromJust $ list ai
+           rPC      = chk "show"    $ fromJust $ readPage ai
+           listC    = chk "list" lst ++ schk lst
+           chk msg  = combineErrs msg . checkDBAttrs ai
+           schk     = combineErrs "list" . concatMap checkSort
+           en       = T.unpack $ name ai
 
+-- | Check whether list entries with a sort specification are
+-- dbEntries.
+checkSort :: Text -> [String]
+checkSort lattr | attr   == lattr        = []
+                | isDB attr              = []
+                | otherwise              = [ err ]
+       where attr = unSort lattr
+             err  = unwords [ "sorting option not supported for attribute"
+                            , T.unpack attr
+                            ]
 
 -- | Checks whether the given attribute is a DBAttribute.
 checkDBAttr :: AdminInterface -> Text -> [String]
