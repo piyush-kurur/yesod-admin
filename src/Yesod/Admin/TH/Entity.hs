@@ -11,14 +11,14 @@ Module to generate admin code for persistent entries.
 
 module Yesod.Admin.TH.Entity
        (
-       -- * Admin section
-       
+       -- * Admin section.
        -- $adminSection
          
-       -- ** Allowed fields
+       -- * Attributes.
+       -- * Actions.
+       -- $Actions
        
-       -- $adminFields
-         
+               
        -- ** Constructors
        
        -- $Constructors
@@ -51,9 +51,14 @@ type Text = T.Text
 
 -- $adminSection
 --
--- To define the admin interface for a persistent objects one needs to
--- define and admin section in the persistent object definition. For
--- example look at the definition of person in the following code.
+-- The administrative interface of an entity is configured through the
+-- (optional) section named \"Admin\". If this section is absent a
+-- sane set of defaults are used. The admin section consists of lines
+-- where the first entry is a field and the rest is its arguments. One
+-- can configure how entities appear on admin pages, what
+-- administrative mass action can be applied on them etc. As an
+-- example, consider the definition given below. We have defined the
+-- /fields/ @inline@ of the entity Person
 --
 -- >      [persist|
 -- >                Person
@@ -63,50 +68,33 @@ type Text = T.Text
 -- >                        address Text
 -- >                        Admin
 -- >                            inline NameAndEmail
--- >                            list   name email age
+-- >                            list   +name email -age
 -- >
 -- >     |]
 --
--- In the above code snippet, we have defined the /fields/ @inline@,
--- and @list@.
-
-
-
--- $adminFields
 --
 -- The allowed fields in the admin section are the following 
 --
--- [@action@] A list of allowed admin actions. Should occur at most
---    once. The words in the the list should contain either (1) the
---    word \"delete\" (delete) (2) a word starting with a small case
---    letter (update action) or (3) a word starting with a upper case
---    letter (a custom action). The textual representation is obtained
---    by taking the un-camelcased version of the name. E.g. a line of
---    the form @action delete confirmRegistration Bar@ means that the
---    object supports delete, an update action titled \"Confirm
---    registration\" give by the variable confirmRegistration and a
---    custom action @Bar@ given by the variable @bar@. Here bar should
---    have the type @'Key' b v -> b m v@
+-- [@action@] A list of allowed admin actions. By default only the
+--    delete action is defined.
 --
 -- [@inline@] Attribute used in the inline display of the
 --    object. Should occur at most once in the admin section. There
 --    should be a single parameter which is the name of the attribute
 --    (See the convention on attribute naming). The default value is
---    the first field in the entity definition.
+--    the first field, i.e. @name@ in the above exampe, in the entity
+--    definition.
 --
--- [@list@] A list of attributes used in the selection list display of
---    the objects. Should occur at most once in the admin section. The
---    parameter is the list of attribute and the ordering of the
---    attribute should be as required in the selection listing. Each
---    /database attribute/ (refer attribute naming convention) is
---    optionally prefixed by either a + or a - to indicate whether the
---    selection should sort in increasing or decreasing order with
---    respect to that attribute respectively. Default value is the
---    single attribute that matches the inline display of the object.
+-- [@list@] A list of attributes used in to display the object in the
+--    selection list. The /database attribute/ (refer attribute naming
+--    convention) can optionally be prefixed by either a + or a - to
+--    indicate whether the selection should sort in increasing or
+--    decreasing order with respect to that attribute
+--    respectively. Default value is the single attribute that matches
+--    the inline display of the object.
 --
 -- [@show@] The list of attributes that are shown on the read page of
 --    the object. This defaults to all the database attributes.
-
 
 
 
@@ -171,8 +159,49 @@ fieldSet en _   f        _   = Left $ errMsg [ en
                                              , " unknown field"
                                              ]
 
+setAction :: String -> Result -> [Text] -> Result
+setAction en = setOnce en "action" action setter
+        where setter ai x = ai { action = Just x }
+                            
+setInline :: String -> Result -> [Text] -> Result
+setInline en  _  []  = Left $ errEmpty en "inline"
+setInline en eai [t] = setOnce en "inline" inline setter eai t
+                      where setter ai x = ai { inline = Just x }
+setInline en  _  _ = Left $ errTooMany en "inline"
+               
+setList :: String -> Result -> [Text] -> Result
+setList en = setOnce en "list" list setter
+     where setter ai x = ai { list = Just x }
+
+setReadPage :: String -> Result -> [Text] -> Result
+setReadPage en = setOnce en "show" readPage setter
+        where setter ai x = ai { readPage = Just x }
+                 
+
+
+setOnce :: String         -- ^ Entity name
+        -> String         -- ^ Field name
+        -> (b -> Maybe x) -- ^ The field getter
+        -> (b -> x -> b)  -- ^ The field setter
+        -> Either String b
+        -> x
+        -> Either String b
+setOnce en f g p eb x = do b <- eb
+                           maybe (Right $ p b x) err $ g b
+         where err = const $ Left  $ errMultiple en f
+
+-- Some errors
 errMsg :: [String] -> String
 errMsg = intercalate ":"
+
+errMultiple :: String -> String -> String
+errEmpty    :: String -> String -> String
+errTooMany  :: String -> String -> String
+
+errMultiple en f = errMsg [en, f, "multiple definition"]
+errEmpty    en f = errMsg [en, f, "empty definition"]
+errTooMany  en f = errMsg [en, f, "too many args"]
+
 
 -- | To use the crud and selection subsites of an entity, we need to
 -- derive a few instances for an entity. This combinator derives a
@@ -459,45 +488,6 @@ unSort t | T.head t == '+' = T.tail t
          | otherwise      = t
 
 
-setAction :: String -> Result -> [Text] -> Result
-setAction en = setOnce en "action" action setter
-        where setter ai x = ai { action = Just x }
-                            
-setInline :: String -> Result -> [Text] -> Result
-setInline en  _  []  = Left $ errEmpty en "inline"
-setInline en eai [t] = setOnce en "inline" inline setter eai t
-                      where setter ai x = ai { inline = Just x }
-setInline en  _  _ = Left $ errTooMany en "inline"
-               
-setList :: String -> Result -> [Text] -> Result
-setList en = setOnce en "list" list setter
-     where setter ai x = ai { list = Just x }
-
-setReadPage :: String -> Result -> [Text] -> Result
-setReadPage en = setOnce en "show" readPage setter
-        where setter ai x = ai { readPage = Just x }
-                 
-
-
-setOnce :: String         -- ^ Entity name
-        -> String         -- ^ Field name
-        -> (b -> Maybe x) -- ^ The field getter
-        -> (b -> x -> b)  -- ^ The field setter
-        -> Either String b
-        -> x
-        -> Either String b
-setOnce en f g p eb x = do b <- eb
-                           maybe (Right $ p b x) err $ g b
-         where err = const $ Left  $ errMultiple en f
-
--- Some errors
-errMultiple :: String -> String -> String
-errEmpty    :: String -> String -> String
-errTooMany  :: String -> String -> String
-
-errMultiple en f = errMsg [en, f, "multiple definition"]
-errEmpty    en f = errMsg [en, f, "empty definition"]
-errTooMany  en f = errMsg [en, f, "too many args"]
 
 -- $attributeName
 -- Attributes can be either
@@ -558,9 +548,22 @@ funcName =  unCapitalise
 --  @RegistrationConfirmUpdate@ for the update @confirm@ of the entity
 --  @Registration@.
 --
---  3. For a custom action @FooBar@, the constructor will the action
---  name itself.
+--  3. For a custom action, the constructor will the action name
+--  itself.
 --
+
+-- | This is a refactor of both attrCons and actionCons. The
+-- expression @constructor e m s@ is the camelcase concatination of e,
+-- m and s if m is lower case and just m if it is upper case. This is
+-- a design pattern in constructors of associated types in
+-- Administrable.
+constructor :: Text     -- ^ Suffix
+            -> Text     -- ^ entity name
+            -> Text     -- ^ middle name
+            -> Text
+constructor s e m | T.null  m = ""
+                  | isLower $ T.head m = camelCaseUnwords [e,m,s]
+                  | otherwise = m
 
 
 attrs      :: AdminInterface -> [Text]
@@ -577,26 +580,6 @@ attrConsP e attr = conP (mkNameT $ attrCons e attr) []
 
 
 
-actionCons  :: Text    -- ^ Entity name
-            -> Text    -- ^ Action name
-            -> Text
-actionCons en act
-   | act == "delete" = camelCaseUnwords [ en
-                                        , "Delete"
-                                        , "Action"
-                                        ]
-   | otherwise       = constructor "Update" en act
-
-
-actionConsP  :: Text -> Text -> PatQ
-actionConsP e attr = conP (mkNameT $ actionCons e attr) []
-
-actionRHS :: Text -> Text -> ExpQ
-actionRHS en act | act == "delete" = conE 'DBDelete
-                 | isUpdate act    = conE 'DBUpdate `appE` updateExp
-                 | otherwise       = conE 'DBCustom `appE` customExp
-    where updateExp = varE $ mkNameT $ unCapitalise $ actionCons en act
-          customExp = varE $ mkNameT act
 
 actions :: AdminInterface
         -> [Text]
@@ -605,54 +588,82 @@ actions = fromMaybe ["delete"] . action
 defDBAction :: AdminInterface
             -> DecQ
 defDBAction ai = singleArgFunc 'dbAction
-                 $ [ (actionConsP en  act, actionRHS en act) | act <- acts ]
-    where acts   = fromMaybe ["delete"] $ action ai
-          en     = name ai
-
--- | This is a refactor of both attrCons and actionCons. The
--- expression @constructor e m s@ is the camelcase concatination of e,
--- m and s if m is lower case and just m if it is upper case. This is
--- a design pattern in constructors of associated types in
--- Administrable.
-constructor :: Text     -- ^ Suffix
-            -> Text     -- ^ entity name
-            -> Text     -- ^ middle name
-            -> Text
-constructor s e m | T.null  m = ""
-                  | isLower $ T.head m = camelCaseUnwords [e,m,s]
-                  | otherwise = m
+                 $ [ (actionConsP en act, rhs act) | act <- acts ]
+    where acts    = fromMaybe ["delete"] $ action ai
+          en      = name ai
+          rhs act | act == "delete" = conE 'DBDelete
+                  | isUpdate act    = conE 'DBUpdate `appE` actFunc act
+                  | otherwise       = conE 'DBCustom `appE` actFunc act
+          actFunc act = varE $ mkNameT $ actionFunctionName en act
 
 
--- $ActionName
+-- $Actions
+-- 
+-- Actions are mass db actions that can be applied from the selection
+-- page. Be default an entity supports only the delete action. The
+-- allowed actions on an entity can be configured by setting the
+-- @action@ field in the admin section of the entity. The field
+-- arguments is a list of words which can be either of the following:
 --
--- The action field of an persistent entity can contain a list of one
--- or more action names. An action name can be one of the following:
+--    1. The word \"delete\" for the delete action. If the entity is
+--       @Person@ then corresponding constructor of @`Action` Person@
+--       will be @PersonDeleteAction@.
 --
---   1. The string "delete" that captures the delete action.
+--    2. Any word starting with a small case letter. This denotes an
+--       update action. For the entity @Person@, declaring an update
+--       action named @foo@ should be accompanied by the definition of
+--       the variable @personFooUpdate@ somewhere in the scope of the
+--       where the TH code is called. The corresponsing constructor is
+--       @PersonFooUpdate@.
 --
---   2. A string that starts with an lower case letter e.g. @confirm@
---   in which case it is an update action. For such an action, there
---   should be an appropriate update defined within the scope where
---   the TH code is called. For e.g. if one uses the string @confirm@
---   in the action field of the entity @Registration@ say, then one
---   needs to define the function @registrationConfirmUpdate@ of type
---   @Update Registration@.
---
---   3. A string that starts with a upper case letter e.g. @FooBar@ in
---   which case it denotes a custom action. There should also be a
---   function with the name @fooBar@ in this case, of type @Key b v ->
---   b m v@.
+--    3. Any word starting with a upper case letter (a custom action).
+--       For the @Person@ entity, declaring a custom action \"@Bar@\",
+--       should be accompanied by the definition of the variable
+--       @personBarAction@ (of type @'Key' b Person -> b m ()@)
+--       somewhere in the scope of the module. The corresponsing
+--       constructor is @PersonBarAction@.
 --
 -- The drop down menu in the selection list will list each action in
 -- the same order as given in the action field.
 
-isDelete :: Text -> Bool
-isUpdate :: Text -> Bool
-isCustomAction :: Text -> Bool
+actionCons  :: Text    -- ^ Entity name
+            -> Text    -- ^ Action name
+            -> Text
+actionCons en act
+   | act == "delete" || isCustomAction act
+                 = camelCaseUnwords [ en
+                                    , act
+                                    , "Action"
+                                    ]
+   | otherwise   = constructor "Update" en act
 
+
+actionFunctionName  :: Text  -- ^ Entity name
+                    -> Text  -- ^ Action name
+                    -> Text
+actionFunctionName en = unCapitalise  . actionCons en
+
+
+actionConsP  :: Text -> Text -> PatQ
+actionConsP e attr = conP (mkNameT $ actionCons e attr) []
+
+
+
+isDelete :: Text       -- ^ action name
+         -> Bool       -- ^ Is the action name a delete action.
 isDelete  = (==) "delete"
+
+
+isUpdate :: Text   -- ^ action name
+         -> Bool   -- ^ Is the action name an update action
 isUpdate  = isLower . T.head
+
+isCustomAction :: Text  -- ^ action name
+               -> Bool  -- ^ Is the action name a custom action
 isCustomAction = isUpper . T.head
 
--- 
+
+
+
+
 
