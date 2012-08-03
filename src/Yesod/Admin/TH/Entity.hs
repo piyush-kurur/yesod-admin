@@ -60,6 +60,7 @@ data AdminInterface
                       , derivedAttrs :: [Text]
                       } deriving Show
 
+-- | Creates the starting admin interfaces.
 defaultInterface :: EntityDef -> AdminInterface
 defaultInterface ed
    = AdminInterface { name     = unHaskellName $ entityHaskell ed
@@ -156,7 +157,7 @@ setDefaults ai = ai { action        = Just act
         inl      = fromMaybe (head $ dbAttrs ai) $ inline ai
         lst      = fromMaybe [inl] $ list ai
         rp       = fromMaybe (dbAttrs ai) $ readPage ai
-        derAttrs = filter isDerived $ [inl] ++ map unSort lst ++ rp 
+        derAttrs = filter isDerived $ [inl] ++ lst ++ rp 
         
 
 {- Developer notes: Code that controls setting of fields. -}
@@ -306,8 +307,8 @@ mkAdminInstances edefs = do coreInst <- mkAdminInstances' edefs
 
 -- | This combinator is similar to @`mkAdminInstances`@ but does not
 -- derive the @`RenderMessage`@ instance for attributes and actions of
--- the entity. This is useful for if you want to support i18n or want
--- to overried the defaults choosen.
+-- the entity. This is useful if you want to support i18n or want to
+-- overried the defaults choosen.
 mkAdminInstances' :: [EntityDef] -> DecsQ
 mkAdminInstances' edefs = do aE <- defEns
                              insts <- withEntityDefs genCode edefs
@@ -340,8 +341,8 @@ deriveInlineDisplay' ai =
      where b     = varT $ mkName "b"
            m     = varT $ mkName "m"
            en    = name ai
-           attr  = fromMaybe (head $ dbAttrs ai) $ inline ai
-           body = normalB $ displayRHS en attr
+           aCons = conE $ mkNameT $ attrCons en $ fromJust  $ inline ai
+           body  = normalB  $ appE (varE 'attributeDisplay) $ aCons
            instBody = [valD (varP 'inlineDisplay) body []]
 
 
@@ -366,7 +367,10 @@ deriveAttributeDisplay' ai
            en = name ai
            attrDisp = funD 'attributeDisplay $ map mkClause $ attrs ai
            mkClause at = clause [attrConsP en at] body []
-                    where body = normalB $ displayRHS en at
+                    where body = normalB $ rhs at
+           rhs at | isDerived at = varE $ mkNameT $ attributeFunctionName en at
+                  | otherwise    = [|inlineDisplay . $fname|]
+                     where fname = varE $ mkNameT $ attributeFieldName en at
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
 -- the AdminInterface for @v@.
@@ -499,13 +503,6 @@ defsps en fs = valD spsVar body []
 mkEntityField :: Text -> Text -> ExpQ
 mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
 
-displayRHS :: Text
-           -> Text
-           -> ExpQ
-displayRHS en at | isDerived at = varE $ mkNameT $ attributeFunctionName en at
-                 | otherwise    = let fname = varE $ mkNameT
-                                                   $ attributeFieldName en at
-                                      in [| inlineDisplay . $fname |]
 
 defListVar :: Name -> [Text] -> DecQ
 defListVar v es = valD var body []
