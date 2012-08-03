@@ -15,16 +15,12 @@ module Yesod.Admin.TH.Entity
        -- $adminSection
          
        -- * Attributes.
+       -- $Attributes
+       
        -- * Actions.
        -- $Actions
        
-               
-       -- ** Constructors
-       
-       -- $Constructors
-
-         
-          AdminInterface(..)
+         AdminInterface(..)
        , mkAdminInstances
        , entityDefToInterface
        , deriveInlineDisplay
@@ -48,6 +44,58 @@ import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
 
 type Text = T.Text
+
+-- | This datatype controls the admin site generate via the template
+-- haskell functions of this module. Having defined this type you can
+-- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want to
+-- tweak the access controls).
+
+data AdminInterface
+     = AdminInterface { name      :: Text
+                      , action    :: Maybe [Text]
+                      , inline    :: Maybe Text
+                      , list      :: Maybe [Text]
+                      , readPage  :: Maybe [Text]
+                      , dbAttrs   :: [Text]
+                      , derivedAttrs :: [Text]
+                      } deriving Show
+
+defaultInterface :: EntityDef -> AdminInterface
+defaultInterface ed
+   = AdminInterface { name     = unHaskellName $ entityHaskell ed
+                    , action   = Nothing
+                    , inline   = Nothing
+                    , list     = Nothing
+                    , readPage = Nothing
+                    , dbAttrs  = das
+                    , derivedAttrs = []
+                    }
+   where das = map (unHaskellName . fieldHaskell) $ entityFields ed
+
+-- | Parse the administrative interface from the entity definition.
+entityDefToInterface :: EntityDef -> Either String AdminInterface
+entityDefToInterface ed = do ai    <- setFields
+                             fmap setDefaults $ chk ai
+                             
+   where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
+         startAI        = defaultInterface ed
+         setFields      = foldl fld (Right startAI) adminLines
+         en             = T.unpack $ name startAI
+         fld eai (x:xs) = fieldSet en eai x xs
+         fld eai []     = eai
+         chk ai | null errs = Right ai
+                | otherwise = Left  $ unlines errs
+                where errs = checkAdminFields ai
+
+-- | A convenient function to run th code on a list of entity defs.
+withEntityDefs :: (AdminInterface -> [DecQ])
+               -> [EntityDef]
+               -> DecsQ
+withEntityDefs genCode edefs = case err of
+                                    [] -> sequence $ concat code
+                                    errs -> fail $ unlines errs
+    where (err,code) = partitionEithers $ map mapper edefs
+          mapper     = fmap genCode . entityDefToInterface
 
 -- $adminSection
 --
@@ -80,70 +128,39 @@ type Text = T.Text
 --
 -- [@inline@] Attribute used in the inline display of the
 --    object. Should occur at most once in the admin section. There
---    should be a single parameter which is the name of the attribute
---    (See the convention on attribute naming). The default value is
---    the first field, i.e. @name@ in the above exampe, in the entity
---    definition.
+--    should be a single parameter which is the name of the attribute.
+--    The default value is the first field, i.e. @name@ in the above
+--    exampe, in the entity definition.
 --
 -- [@list@] A list of attributes used in to display the object in the
---    selection list. The /database attribute/ (refer attribute naming
---    convention) can optionally be prefixed by either a + or a - to
---    indicate whether the selection should sort in increasing or
---    decreasing order with respect to that attribute
---    respectively. Default value is the single attribute that matches
---    the inline display of the object.
+--    selection list. The /database attribute/ can optionally be
+--    prefixed by either a + or a - to indicate whether the selection
+--    should sort in increasing or decreasing order with respect to
+--    that attribute respectively. Default value is the single
+--    attribute that matches the inline display of the object.
 --
 -- [@show@] The list of attributes that are shown on the read page of
 --    the object. This defaults to all the database attributes.
 
 
-
--- | This datatype controls the admin site generate via the template
--- haskell functions of this module. Having defined this type you can
--- use either either `mkYesodAdmin` or `mkEntityAdmin` (if you want to
--- tweak the access controls).
-
-data AdminInterface
-     = AdminInterface { name      :: Text
-                      , action    :: Maybe [Text]
-                      , inline    :: Maybe Text
-                      , list      :: Maybe [Text]
-                      , readPage  :: Maybe [Text]
-                      , dbAttrs   :: [Text]
-                      , derivedAttrs :: [Text]
-                      } deriving Show
-
-defaultInterface :: EntityDef -> AdminInterface
-defaultInterface ed
-   = AdminInterface { name     = unHaskellName $ entityHaskell ed
-                    , action   = Nothing
-                    , inline   = Nothing
-                    , list     = Nothing
-                    , readPage = Nothing
-                    , dbAttrs  = das
-                    , derivedAttrs = []
+-- | Once the admin section is parsed, this function sets the default
+-- values of all unsef fields.
+setDefaults :: AdminInterface -> AdminInterface
+setDefaults ai = ai { action        = Just act
+                    , inline        = Just inl
+                    , list          = Just lst
+                    , readPage      = Just rp
+                    , derivedAttrs  = nub derAttrs
                     }
-   where das = map (unHaskellName . fieldHaskell) $ entityFields ed
+  where act      = fromMaybe ["delete"] $ action ai
+        inl      = fromMaybe (head $ dbAttrs ai) $ inline ai
+        lst      = fromMaybe [inl] $ list ai
+        rp       = fromMaybe (dbAttrs ai) $ readPage ai
+        derAttrs = filter isDerived $ [inl] ++ map unSort lst ++ rp 
+        
 
-
-entityDefToInterface :: EntityDef -> Either String AdminInterface
-entityDefToInterface ed = do ai    <- setFields
-                             aichk <- chk ai
-                             return $ aichk {derivedAttrs = derAttrs aichk }
-   where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
-         startAI        = defaultInterface ed
-         setFields      = foldl fld (Right startAI) adminLines
-         en             = T.unpack $ name startAI
-         fld eai (x:xs) = fieldSet en eai x xs
-         fld eai []     = eai
-         derAttrs ai    = filter isDerived (lstAttrs ai ++ rpAttrs ai)
-         lstAttrs ai    = map unSort $ fromMaybe [] $ list ai
-         rpAttrs  ai    = fromMaybe [] $ readPage ai
-         chk ai | null errs = Right ai
-                | otherwise = Left  $ unlines errs
-                where errs = checkAdminFields ai
-
-
+{- Developer notes: Code that controls setting of fields. -}
+        
 fieldSet :: String
          -> Either String AdminInterface
          -> Text
@@ -190,7 +207,56 @@ setOnce en f g p eb x = do b <- eb
                            maybe (Right $ p b x) err $ g b
          where err = const $ Left  $ errMultiple en f
 
--- Some errors
+{- End of field setting code -}
+               
+{-
+
+Developer notes
+---------------
+
+The setters check for multiple definitions and flag an error. The
+checkers check for overall consistency. The overall consistency check
+that one can do is to check that every attribute name given in the
+Admin section that starts with a small letter should be a
+dbAttribute. This should be checked for in inline, list and show
+fields.
+
+-}
+
+
+
+type Result = Either String AdminInterface
+
+checkAdminFields :: AdminInterface -> [String]
+checkAdminFields ai = combineErrs (T.unpack $ name ai)
+                             $ concat [ inlineC
+                                      , listC
+                                      , rPC
+                                      ]
+     where inlineC = chk "inline: "
+                         $ maybeToList $ inline ai
+           listC   = chk "list" $ map unSort $ fromMaybe [] $ list ai
+           rPC     = chk "show" $ fromMaybe [] $ readPage ai
+           chk msg = combineErrs msg . checkDBAttrs ai
+
+
+-- | Checks whether the given attribute is a DBAttribute.
+checkDBAttr :: AdminInterface -> Text -> [String]
+checkDBAttr ai attr | isDerived attr            = []
+                    | attr `elem` dbAttrs ai    = []
+                    | otherwise = [ unwords [ T.unpack attr
+                                            , " unknown database attribute"
+                                            ]
+                                  ]
+
+checkDBAttrs :: AdminInterface -> [Text] -> [String]
+checkDBAttrs ai = concatMap (checkDBAttr ai)
+
+
+{- End of overall check of AI -}
+
+{- Error message generation -}
+               
 errMsg :: [String] -> String
 errMsg = intercalate ":"
 
@@ -201,6 +267,16 @@ errTooMany  :: String -> String -> String
 errMultiple en f = errMsg [en, f, "multiple definition"]
 errEmpty    en f = errMsg [en, f, "empty definition"]
 errTooMany  en f = errMsg [en, f, "too many args"]
+
+combineErrs :: String -> [String] -> [String]
+combineErrs _   []     = []
+combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
+         where f = tag ++ ": " ++ x
+               l = length tag + 2
+               indent len = (++) $ replicate len ' '
+
+{- End of error message generation -}
+
 
 
 -- | To use the crud and selection subsites of an entity, we need to
@@ -233,14 +309,6 @@ mkAdminInstances' edefs = do aE <- defEns
           defEns     = valD (varP $ mkName "adminEntities") body []
 
 
-withEntityDefs :: (AdminInterface -> [DecQ])
-               -> [EntityDef]
-               -> DecsQ
-withEntityDefs genCode edefs = case err of
-                                    [] -> sequence $ concat code
-                                    errs -> fail $ unlines errs
-    where (err,code) = partitionEithers $ map mapper edefs
-          mapper     = fmap genCode . entityDefToInterface
 
 -- | Derive an instance of `InlineDisplay` for an entity give its
 -- administrative interface.
@@ -351,9 +419,8 @@ defAttribute :: AdminInterface      -- ^ Entity name
 defAttribute ai = defAssocType ''Attribute cons
                                [''Eq, ''Enum, ''Bounded]
                                ai
-     where cons = map (attrCons en) ats
+     where cons = map (attrCons en) $ attrs ai
            en   = name ai
-           ats  = dbAttrs ai ++ derivedAttrs ai
 
 
 -- | Define the Action data type.
@@ -377,6 +444,8 @@ defAssocType n cons clss ai b = dataInstD (cxt []) n [persistType en b]
                                       alts clss
       where en   = name ai
             alts = [ normalC c [] | c <- map mkNameT cons ]
+
+
 
 
 defDBAttrs    :: AdminInterface -> DecQ
@@ -421,9 +490,9 @@ mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
 displayRHS :: Text
            -> Text
            -> ExpQ
-displayRHS en at | isDerived at = varE $ mkNameT $ funcName at
+displayRHS en at | isDerived at = varE $ mkNameT $ attributeFunctionName en at
                  | otherwise    = let fname = varE $ mkNameT
-                                                   $ fieldName en at
+                                                   $ attributeFieldName en at
                                       in [| inlineDisplay . $fname |]
 
 defListVar :: Name -> [Text] -> DecQ
@@ -431,54 +500,6 @@ defListVar v es = valD var body []
    where var  = varP v
          body = normalB . listE $ map (conE . mkNameT) es
 
-
-{-
-
-Developer notes
----------------
-
-The setters check for multiple definitions and flag an error. The
-checkers check for overall consistency. The overall consistency check
-that one can do is to check that every attribute name given in the
-Admin section that starts with a small letter should be a
-dbAttribute. This should be checked for in inline, list and show
-fields.
-
--}
-
-
-
-type Result = Either String AdminInterface
-
-checkAdminFields :: AdminInterface -> [String]
-checkAdminFields ai = combineErrs (T.unpack $ name ai)
-                             $ concat [ inlineC
-                                      , listC
-                                      , rPC
-                                      ]
-     where inlineC = chk "inline: "
-                         $ maybeToList $ inline ai
-           listC   = chk "list" $ map unSort $ fromMaybe [] $ list ai
-           rPC     = chk "show" $ fromMaybe [] $ readPage ai
-           chk msg = combineErrs msg . checkDBAttrs ai
-
-checkDBAttr :: AdminInterface -> Text -> [String]
-checkDBAttr ai attr | isDerived attr            = []
-                    | attr `elem` dbAttrs ai    = []
-                    | otherwise = [ unwords [ T.unpack attr
-                                            , " unknown database attribute"
-                                            ]
-                                  ]
-
-checkDBAttrs :: AdminInterface -> [Text] -> [String]
-checkDBAttrs ai = concatMap (checkDBAttr ai)
-
-combineErrs :: String -> [String] -> [String]
-combineErrs _   []     = []
-combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
-         where f = tag ++ ": " ++ x
-               l = length tag + 2
-               indent len = (++) $ replicate len ' '
 
 
 -- | Get rid of the sorting rule from an attribute name.
@@ -489,94 +510,6 @@ unSort t | T.head t == '+' = T.tail t
 
 
 
--- $attributeName
--- Attributes can be either
---
---   1. A string that starts with an lower case letter e.g. @name@
---   in which case it is one of the fields of the Persistent entity.
---
---   2. A string that starts with a upper case letter
---   e.g. @NameAndEmail@ in which case it denotes a function which
---   when applied to the objects returns the displayed string. The
---   function name is obtained by converting the first character of
---   the name into lower case (i.e @fooBar@ for an attribute @FooBar@).
---   The type of the function should be.
---
---   @('PersistEntity' v, 'PersistStore' b m) => v -> b m 'Text'@
---
---
-
-isDerived :: Text -> Bool
-isDerived = isUpper . T.head
-isDB      :: Text -> Bool
-isDB      = isLower . T.head
-
-
-fieldName :: Text -> Text -> Text
-fieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
-
-funcName :: Text -> Text
-funcName =  unCapitalise
-
--- $Constructors
---
--- We now describe the constructors of the associated types
--- @`Attribute`@ and @`Action`@ that the TH code generates.  Knowing
--- this name is required if you want overide their titles.
---
--- The constructors for Attributes are as follows:
---
---  1. For a database attribute the constructor is camel cased
---  concatenation of the entity name, the attribute name and the
---  string \"Attribute\". For example the database column @name@ of
---  entity Person will give a constructor @PersonNameAttribute@
---
---  2. For a constructed attribute corresponding to a function, the
---  constructor will be the function name with the first letter
---  capitalised. For example if the function name is @nameAndEmail@,
---  the constructor will be @NameAndEmail@
---
--- The constructors for the administrative actions are as follows:
---
---  1. For the delete action the constructor is camel cased
---  concatenation of the entity and the string
---  \"DeleteAction\". E.g. @PersonDeleteAction@ for the entity
---  @Person@.
---
---  2. For the update action it is camel cased concatenation of the
---  entity name, name of the update and the string \"Update\". E.g
---  @RegistrationConfirmUpdate@ for the update @confirm@ of the entity
---  @Registration@.
---
---  3. For a custom action, the constructor will the action name
---  itself.
---
-
--- | This is a refactor of both attrCons and actionCons. The
--- expression @constructor e m s@ is the camelcase concatination of e,
--- m and s if m is lower case and just m if it is upper case. This is
--- a design pattern in constructors of associated types in
--- Administrable.
-constructor :: Text     -- ^ Suffix
-            -> Text     -- ^ entity name
-            -> Text     -- ^ middle name
-            -> Text
-constructor s e m | T.null  m = ""
-                  | isLower $ T.head m = camelCaseUnwords [e,m,s]
-                  | otherwise = m
-
-
-attrs      :: AdminInterface -> [Text]
-attrs ai   = dbAttrs ai ++ derivedAttrs ai
-
-attrCons   :: Text    -- ^ Entity name
-           -> Text    -- ^ Attribute name
-           -> Text
-attrCons = constructor "Attribute"
-
-
-attrConsP  :: Text -> Text -> PatQ
-attrConsP e attr = conP (mkNameT $ attrCons e attr) []
 
 
 
@@ -595,6 +528,71 @@ defDBAction ai = singleArgFunc 'dbAction
                   | isUpdate act    = conE 'DBUpdate `appE` actFunc act
                   | otherwise       = conE 'DBCustom `appE` actFunc act
           actFunc act = varE $ mkNameT $ actionFunctionName en act
+
+
+-- | This is a refactor of both attrCons and actionCons. The
+-- expression @constructor e m s@ is the camelcase concatination of e,
+-- m and s if m is lower case and just m if it is upper case. This is
+-- a design pattern in constructors of associated types in
+-- Administrable.
+constructor :: Text     -- ^ Suffix
+            -> Text     -- ^ entity name
+            -> Text     -- ^ middle name
+            -> Text
+constructor s e m = camelCaseUnwords [e,m,s]
+
+
+-- $Attributes
+--
+-- Attributes of an entity is used in selection pages, display pages
+-- and in the inline display of an entity. All the fields of the
+-- persistent entity are themselves attributes. These are the database
+-- attributes of the entity as they are stored in the database backend
+-- in some form. Besides one can define other /derived attributes/,
+-- i.e.  attributes of the entity that are not stored in the database
+-- but can be computed. In the fields inline, list and show of the
+-- admin section the following convention is used:
+--
+--   1. A string that starts with an lower case letter, e.g. @name@,
+--      is a database attribute. If the entity is @Person@ the
+--      constructor of @'Attribute' Person@ associated with the
+--      database attribute @name@ would be @PersonNameAttribute@.
+--
+--   2. A string that starts with a upper case letter
+--      e.g. @NameAndEmail@ is a derived attribute. For the entity
+--      @Person@, declaring a derived attribute @NameAndEmail@ should
+--      be accompanied by the definition of the variable
+--      @personNameAndEmailAttribute@ with type @Person -> b m 'Text'@
+--      somewhere in the scope. The corresponding constructor is
+--      @PersonNameAndEmailAttribute@.
+
+
+isDerived :: Text -> Bool
+isDerived = isUpper . T.head
+isDB      :: Text -> Bool
+isDB      = isLower . T.head
+
+
+attrCons   :: Text    -- ^ Entity name
+           -> Text    -- ^ Attribute name
+           -> Text
+attrCons = constructor "Attribute"
+
+attrConsP  :: Text -> Text -> PatQ
+attrConsP e attr = conP (mkNameT $ attrCons e attr) []
+
+
+
+
+attributeFieldName :: Text -> Text -> Text
+attributeFieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
+
+attributeFunctionName :: Text -> Text -> Text
+attributeFunctionName en =  unCapitalise .  attrCons en
+
+
+attrs      :: AdminInterface -> [Text]
+attrs ai   = dbAttrs ai ++ derivedAttrs ai
 
 
 -- $Actions
@@ -630,13 +628,8 @@ actionCons  :: Text    -- ^ Entity name
             -> Text    -- ^ Action name
             -> Text
 actionCons en act
-   | act == "delete" || isCustomAction act
-                 = camelCaseUnwords [ en
-                                    , act
-                                    , "Action"
-                                    ]
-   | otherwise   = constructor "Update" en act
-
+   | isUpdate act = constructor "Update" en act
+   | otherwise    = constructor "Action"  en act
 
 actionFunctionName  :: Text  -- ^ Entity name
                     -> Text  -- ^ Action name
@@ -656,7 +649,7 @@ isDelete  = (==) "delete"
 
 isUpdate :: Text   -- ^ action name
          -> Bool   -- ^ Is the action name an update action
-isUpdate  = isLower . T.head
+isUpdate  act = isLower (T.head act) && not (isDelete act)
 
 isCustomAction :: Text  -- ^ action name
                -> Bool  -- ^ Is the action name a custom action
