@@ -20,6 +20,9 @@ module Yesod.Admin.TH.Entity
        -- * Actions.
        -- $Actions
        
+       -- * Customisation and i18n.
+       -- $i18n
+         
          AdminInterface(..)
        , mkAdminInstances
        , entityDefToInterface
@@ -424,7 +427,20 @@ defRenderMesg mesgName genCons fields en
            msgTyp   = appT (conT mesgName) $ persistType en b
            rm       = funD 'renderMessage $ map mkClause fields
            mkClause c = clause [wildP, wildP, genCons en c]
-                        (normalB $ defMsgRep c) []
+                        (normalB $ defaultMessage c) []
+                      
+
+-- $titles
+-- 
+-- Actions and Attributes should be instances of
+-- @`RenderMessage`@ and the default instances are derived by the TH code. The
+-- default rule .This allows us to i18nize the admin
+-- site. 
+-- 
+           
+defaultMessage :: Text -> ExpQ
+defaultMessage = textL . capitalise . unCamelCase
+
 
 
 -- | Define the attribute data type.
@@ -574,6 +590,14 @@ constructor s e m = camelCaseUnwords [e,m,s]
 --      @personNameAndEmailAttribute@ with type @Person -> b m 'Text'@
 --      somewhere in the scope. The corresponding constructor is
 --      @PersonNameAndEmailAttribute@.
+--
+-- Attribute are displayed as column titles in selection list and in
+-- fields on the display page. To support i18n, they have to be
+-- instances of @'RenderMessage'@. The TH functions generate a default
+-- instance in which the rendering of the attribute is its
+-- uncamelcased and name. For e.g. name becomes \"Name\" and
+-- NameAndEmail becomes \"Name and Email\". If you want to customise
+-- it or support multiple languages see the i18n section for details.
 
 
 isDerived :: Text -> Bool
@@ -603,7 +627,6 @@ attributeFunctionName en =  unCapitalise .  attrCons en
 attrs      :: AdminInterface -> [Text]
 attrs ai   = dbAttrs ai ++ derivedAttrs ai
 
-
 -- $Actions
 -- 
 -- Actions are mass db actions that can be applied from the selection
@@ -632,6 +655,14 @@ attrs ai   = dbAttrs ai ++ derivedAttrs ai
 --
 -- The drop down menu in the selection list will list each action in
 -- the same order as given in the action field.
+--
+-- Actions are displayed in the drop down list on the selection
+-- sites. Like Attributes they should be an instance of
+-- @`RenderMessage`@ and the default instance generated follows the
+-- same convention as attributes. See the i18n section for
+-- customisation.
+
+
 
 actionCons  :: Text    -- ^ Entity name
             -> Text    -- ^ Action name
@@ -666,6 +697,12 @@ isCustomAction = isUpper . T.head
 
 
 
-
+-- $i18n
+--
+-- For an entity @v@ the admin site requires the types @'Attribute'
+-- v@, @'Action' v@ and @Collective v@ to be instances of
+-- @'RenderMessage'@. Even if you plan to support only one language,
+-- you might not be happy by the default choices for each of these
+-- stuff
 
 
