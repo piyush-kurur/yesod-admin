@@ -341,11 +341,11 @@ deriveInlineDisplay' ai =
                mkInstance [persistStoreP b m]
                           ''InlineDisplay [b, m, persistType en b]
                           instBody
-     where b     = varT $ mkName "b"
-           m     = varT $ mkName "m"
-           en    = name ai
-           aCons = conE $ mkNameT $ attrCons en $ fromJust  $ inline ai
-           body  = normalB  $ appE (varE 'attributeDisplay) $ aCons
+     where b        = varT $ mkName "b"
+           m        = varT $ mkName "m"
+           en       = name ai
+           aCons    = conE $ mkNameT $ attrCons en $ fromJust  $ inline ai
+           body     = normalB [| attributeDisplay $aCons |]
            instBody = [valD (varP 'inlineDisplay) body []]
 
 
@@ -399,21 +399,14 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
 
 deriveRenderMessageAction :: AdminInterface
                           -> DecQ
-deriveRenderMessageAction ai = defRenderMesg ''Action
-                                             actionConsP
-                                             (actions ai)
-                                             (name ai)
+deriveRenderMessageAction ai
+  = defRenderMesg ''Action actionConsP (actions ai) (name ai)
 
 deriveRenderMessageAttribute :: AdminInterface
                              -> DecQ
-deriveRenderMessageAttribute ai = defRenderMesg ''Attribute
-                                                attrConsP
-                                                (attrs ai)
-                                                (name ai)
-
-defMsgRep :: Text -> ExpQ
-defMsgRep = textL . capitalise . unCamelCase
-
+deriveRenderMessageAttribute ai
+  = defRenderMesg ''Attribute attrConsP (attrs ai) (name ai)
+    
 defRenderMesg :: Name           -- ^ For which type
               -> (Text -> Text -> PatQ) -- ^ Constructor creator
               -> [Text]         -- ^ The fields
@@ -697,6 +690,7 @@ isCustomAction = isUpper . T.head
 
 
 
+
 -- $i18n
 --
 -- For an entity @v@ the admin site requires the types @'Attribute'
@@ -704,5 +698,4 @@ isCustomAction = isUpper . T.head
 -- @'RenderMessage'@. Even if you plan to support only one language,
 -- you might not be happy by the default choices for each of these
 -- stuff
-
 
