@@ -13,16 +13,16 @@ module Yesod.Admin.TH.Entity
        (
        -- * Admin section.
        -- $adminSection
-         
+
        -- * Attributes.
        -- $Attributes
-       
+
        -- * Actions.
        -- $Actions
-       
+
        -- * Customisation and i18n.
        -- $i18n
-         
+
          AdminInterface(..)
        , mkAdminInstances
        , entityDefToInterface
@@ -80,7 +80,7 @@ defaultInterface ed
 entityDefToInterface :: EntityDef -> Either String AdminInterface
 entityDefToInterface ed = do ai <- setFields
                              chk $ setDefaults ai
-                             
+
    where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
          startAI        = defaultInterface ed
          setFields      = foldl fld (Right startAI) adminLines
@@ -125,7 +125,7 @@ withEntityDefs genCode edefs = case err of
 -- >     |]
 --
 --
--- The allowed fields in the admin section are the following 
+-- The allowed fields in the admin section are the following
 --
 -- [@action@] A list of allowed admin actions. By default only the
 --    delete action is defined.
@@ -147,6 +147,15 @@ withEntityDefs genCode edefs = case err of
 --    the object. This defaults to all the database attributes.
 
 
+getSortOpt :: Text    -- ^ Entity name
+           -> Text    -- ^ Field name
+           -> Maybe ExpQ
+getSortOpt en f | T.head f == '+' = Just $ asc  $ mkEntityField en $ T.tail f
+                | T.head f == '-' = Just $ desc $ mkEntityField en $ T.tail f
+                | otherwise       = Nothing
+   where asc  e = [|Asc  $e |]
+         desc e = [|Desc $e |]
+
 -- | Once the admin section is parsed, this function sets the default
 -- values of all unsef fields.
 setDefaults :: AdminInterface -> AdminInterface
@@ -160,11 +169,11 @@ setDefaults ai = ai { action        = Just act
         inl      = fromMaybe (head $ dbAttrs ai) $ inline ai
         lst      = fromMaybe [inl] $ list ai
         rp       = fromMaybe (dbAttrs ai) $ readPage ai
-        derAttrs = filter isDerived $ [inl] ++ lst ++ rp 
-        
+        derAttrs = filter isDerived $ [inl] ++ lst ++ rp
+
 
 {- Developer notes: Code that controls setting of fields. -}
-        
+
 fieldSet :: String
          -> Either String AdminInterface
          -> Text
@@ -183,13 +192,13 @@ fieldSet en _   f        _   = Left $ errMsg [ en
 setAction :: String -> Result -> [Text] -> Result
 setAction en = setOnce en "action" action setter
         where setter ai x = ai { action = Just x }
-                            
+
 setInline :: String -> Result -> [Text] -> Result
 setInline en  _  []  = Left $ errEmpty en "inline"
 setInline en eai [t] = setOnce en "inline" inline setter eai t
                       where setter ai x = ai { inline = Just x }
 setInline en  _  _ = Left $ errTooMany en "inline"
-               
+
 setList :: String -> Result -> [Text] -> Result
 setList en = setOnce en "list" list setter
      where setter ai x = ai { list = Just x }
@@ -197,7 +206,7 @@ setList en = setOnce en "list" list setter
 setReadPage :: String -> Result -> [Text] -> Result
 setReadPage en = setOnce en "show" readPage setter
         where setter ai x = ai { readPage = Just x }
-                 
+
 
 
 setOnce :: String         -- ^ Entity name
@@ -212,7 +221,7 @@ setOnce en f g p eb x = do b <- eb
          where err = const $ Left  $ errMultiple en f
 
 {- End of field setting code -}
-               
+
 {-
 
 Developer notes
@@ -272,7 +281,7 @@ checkDBAttrs ai = concatMap (checkDBAttr ai)
 {- End of overall check of AI -}
 
 {- Error message generation -}
-               
+
 errMsg :: [String] -> String
 errMsg = intercalate ":"
 
@@ -406,7 +415,7 @@ deriveRenderMessageAttribute :: AdminInterface
                              -> DecQ
 deriveRenderMessageAttribute ai
   = defRenderMesg ''Attribute attrConsP (attrs ai) (name ai)
-    
+
 defRenderMesg :: Name           -- ^ For which type
               -> (Text -> Text -> PatQ) -- ^ Constructor creator
               -> [Text]         -- ^ The fields
@@ -421,16 +430,16 @@ defRenderMesg mesgName genCons fields en
            rm       = funD 'renderMessage $ map mkClause fields
            mkClause c = clause [wildP, wildP, genCons en c]
                         (normalB $ defaultMessage c) []
-                      
+
 
 -- $titles
--- 
+--
 -- Actions and Attributes should be instances of
 -- @`RenderMessage`@ and the default instances are derived by the TH code. The
 -- default rule .This allows us to i18nize the admin
--- site. 
--- 
-           
+-- site.
+--
+
 defaultMessage :: Text -> ExpQ
 defaultMessage = textL . capitalise . unCamelCase
 
@@ -497,20 +506,12 @@ defAttrListVar var en = defListVar var
 
 defSelectionPageSort :: AdminInterface
                      -> Maybe DecQ
-defSelectionPageSort ai = fmap (defsps $ name ai) $ list ai
+defSelectionPageSort ai = fmap decl $ list ai
+    where en       = name ai
+          body     = normalB . listE . catMaybes . map (getSortOpt en) 
+          selpPat  = varP 'selectionPageSort
+          decl lst = valD selpPat (body lst) []
 
-defsps :: Text -> [Text] -> DecQ
-defsps en fs = valD spsVar body []
-    where body   = normalB $ listE $ catMaybes $ map sortOpt fs
-          spsVar = varP 'selectionPageSort
-          asc  = Just . appE (conE 'Asc)
-          desc = Just . appE (conE 'Desc)
-          sortOpt f | T.head f   == '-' = desc $ mkEntityField en $ T.tail f
-                    | T.head f   == '+' = asc  $ mkEntityField en $ T.tail f
-                    | otherwise         = Nothing
-
-mkEntityField :: Text -> Text -> ExpQ
-mkEntityField e t = conE $ mkNameT $ capitalise $ camelCaseUnwords [e,t]
 
 
 defListVar :: Name -> [Text] -> DecQ
@@ -621,7 +622,7 @@ attrs      :: AdminInterface -> [Text]
 attrs ai   = dbAttrs ai ++ derivedAttrs ai
 
 -- $Actions
--- 
+--
 -- Actions are mass db actions that can be applied from the selection
 -- page. Be default an entity supports only the delete action. The
 -- allowed actions on an entity can be configured by setting the
