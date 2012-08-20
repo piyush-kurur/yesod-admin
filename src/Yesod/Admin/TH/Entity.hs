@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts             #-}
 {-# LANGUAGE TemplateHaskell              #-}
 {-# LANGUAGE OverloadedStrings            #-}
+{-# LANGUAGE QuasiQuotes                  #-}
 {-|
 
 Module to generate admin code for persistent entries.
@@ -34,7 +35,12 @@ module Yesod.Admin.TH.Entity
 import Data.Char
 import Data.List
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import qualified Data.Map as M
+import Control.Applicative
+
+import System.FilePath
+import System.Directory
 import Data.Maybe
 import Data.Either
 import Language.Haskell.TH
@@ -45,6 +51,7 @@ import Yesod.Admin.Types
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.Class
+import Yesod.Admin.Message
 
 type Text = T.Text
 
@@ -310,12 +317,8 @@ combineErrs tag (x:xs) = [unlines (f:map (indent l) xs)]
 -- argument. Typically you would want to use this with the persist
 -- quasi-quoter.
 mkAdminInstances :: [EntityDef] -> DecsQ
-mkAdminInstances edefs = do coreInst <- mkAdminInstances' edefs
-                            mesgInst <- withEntityDefs genCode edefs
-                            return $ coreInst ++ mesgInst
-    where genCode ai = [ deriveRenderMessageAttribute ai
-                       , deriveRenderMessageAction ai
-                       ]
+mkAdminInstances edefs =  mkAdminInstances' edefs
+
 
 -- | This combinator is similar to @`mkAdminInstances`@ but does not
 -- derive the @`RenderMessage`@ instance for attributes and actions of
@@ -406,30 +409,6 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                     , defSelectionPageSort ai
                                     ]
 
-deriveRenderMessageAction :: AdminInterface
-                          -> DecQ
-deriveRenderMessageAction ai
-  = defRenderMesg ''Action actionConsP (actions ai) (name ai)
-
-deriveRenderMessageAttribute :: AdminInterface
-                             -> DecQ
-deriveRenderMessageAttribute ai
-  = defRenderMesg ''Attribute attrConsP (attrs ai) (name ai)
-
-defRenderMesg :: Name           -- ^ For which type
-              -> (Text -> Text -> PatQ) -- ^ Constructor creator
-              -> [Text]         -- ^ The fields
-              -> Text           -- ^ The entity name
-              -> DecQ
-defRenderMesg mesgName genCons fields en
-              = mkInstance [] ''RenderMessage [master, msgTyp]
-                                     [rm]
-     where master   = varT $ mkName "master"
-           b        = varT $ mkName "b"
-           msgTyp   = appT (conT mesgName) $ persistType en b
-           rm       = funD 'renderMessage $ map mkClause fields
-           mkClause c = clause [wildP, wildP, genCons en c]
-                        (normalB $ defaultMessage c) []
 
 
 -- $titles
@@ -508,7 +487,7 @@ defSelectionPageSort :: AdminInterface
                      -> Maybe DecQ
 defSelectionPageSort ai = fmap decl $ list ai
     where en       = name ai
-          body     = normalB . listE . catMaybes . map (getSortOpt en) 
+          body     = normalB . listE . catMaybes . map (getSortOpt en)
           selpPat  = varP 'selectionPageSort
           decl lst = valD selpPat (body lst) []
 
@@ -517,7 +496,7 @@ defSelectionPageSort ai = fmap decl $ list ai
 defListVar :: Name -> [Text] -> DecQ
 defListVar v es = valD var body []
    where var  = varP v
-         body = normalB . listE $ map (conE . mkNameT) es
+         body = normalB . listE $ map (conE . mkNameT)  es
 
 
 
@@ -690,6 +669,138 @@ isCustomAction :: Text  -- ^ action name
 isCustomAction = isUpper . T.head
 
 
+{- The I18N code:
+
+We start by defining some local type aliases to improve code
+readability. These are not meant to be exported.
+
+-}
+
+type MesgDef      = (Text, Text)         -- ^ message constructor and
+                                         -- its rendering text
+type MesgPatDef   = (PatQ, ExpQ)         -- ^ message constructor
+                                         -- pattern and its rendering
+                                         -- expression
+type LangTrans    = (Lang, [MesgDef])    -- ^ language translation
+type LangPatTrans = (ExpQ, [MesgPatDef]) -- ^ language translation
+                                         -- pattern and its message
+                                         -- definition pattern
+
+-- | Given a function to generate the constructor name and a message
+-- definition returns the corresponding definition in TH form.
+
+toMesgPatDef :: (Text -> PatQ)  -- ^ constructor generator
+             -> MesgDef         -- ^ The message definition
+             -> MesgPatDef
+toMesgPatDef consGen (consName, txt) = (consGen consName, textL txt)
+
+-- | Given a function to generate the constructor name and a language translation
+-- returns the
+toLangPatTrans :: (Text -> PatQ) -- ^ The constructor generator
+               -> LangTrans      -- ^ The language translation
+               -> LangPatTrans
+
+toLangPatTrans consGen (lang, mdefs)
+  = (textL lang, toMesgPatDef consGen <$> mdefs)
+
+-- | Generate an attribute message definition.
+toAttributePatDef :: Text       -- ^ Entity name
+                  -> MesgDef    -- ^ The message definition
+                  -> MesgPatDef
+toAttributePatDef entity (at, txt) = (attrConsP entity at, textL txt)
+
+-- | Generate an action message definition.
+toActionPatDef :: Text        -- ^ Entity name
+               -> MesgDef     -- ^ The message definition
+               -> MesgPatDef
+toActionPatDef entity (act, txt) = (actionConsP entity act, textL txt)
+
+
+
+
+-- | The workhorse function for i18n.
+mkMessage :: TypeQ          -- ^ For which type
+          -> [LangPatTrans] -- ^ The translations, empty for default
+                            -- instance.
+          -> [MesgPatDef]   -- ^ The default definitions
+          -> DecQ
+mkMessage msgTyp trans defs =
+   mkInstance [] ''RenderMessage [master, msgTyp]
+                 [funD 'renderMessage cls]
+   where cls = if null trans then [defaultClause defs]
+                  else [translateClause trans, defaultClause defs]
+         master = varT $ mkName "master"
+
+
+
+-- | Create a default clause out of the message definition.
+defaultClause :: [MesgPatDef] -> ClauseQ
+defaultClause mdef = do msgV <- newName "msg"
+                        clause [wildP, wildP, varP msgV]
+                               (normalB $ mkCase msgV mdef)
+                               []
+
+translateClause :: [LangPatTrans] -> ClauseQ
+translateClause ldefs = do master <- newName "master"
+                           l      <- newName "l"
+                           ls     <- newName "ls"
+                           msg    <- newName "msg"
+                           trans master l ls msg
+  where trans master l ls msg = clause [ masterP
+                                       , lstPat
+                                       , msgP
+                                       ]
+                                       (guardedB guards)
+                                       []
+              where masterP = varP master
+                    lstPat  = conP '(:) [varP l, varP ls]
+                    msgP    = varP msg
+                    guards  = map (langGuard l msg) ldefs
+                              ++ [ langRest master ls msg ]
+
+
+
+-- | Create a guard with a given language expression.
+langGuard :: Name          -- ^ lang variable name
+          -> Name          -- ^ mesage variable
+          -> LangPatTrans  -- ^ the language definition
+          -> Q (Guard, Exp)
+langGuard l msg (lval,mpats) = normalGE [| $lexp == $lval |]
+                                        $ mkCase msg mpats
+  where lexp = varE l
+
+-- | Check rendering with the rest of the languages
+langRest :: Name -- ^ master var
+         -> Name -- ^ rest of the languages
+         -> Name -- ^ message variable
+         -> Q (Guard, Exp)
+langRest master ls msg = normalGE [| otherwise |]
+                                  [| renderMessage $masterE $lsE $msgE |]
+  where masterE = varE master
+        lsE     = varE ls
+        msgE    = varE msg
+
+
+-- | Creates a case expression which generates the actual rendering.
+mkCase :: Name          -- ^ message variable
+       -> [MesgPatDef]  -- ^ message definition
+       -> ExpQ
+mkCase v = caseE (varE v) . map mkCl
+    where mkCl (p,b) = match p (normalB b) []
+
+
+
+-- | Get the language name from the file name.
+langName :: FilePath -> Lang
+langName = T.pack . dropExtension . takeFileName
+
+-- | Check if the file is a valid message file.
+isMessageFile :: FilePath -> Bool
+isMessageFile f = takeExtension f == (extSeparator:"msg")
+
+-- | Get all the message files.
+getMessageFiles :: FilePath -> IO [FilePath]
+getMessageFiles dir = filter isMessageFile <$> getDirectoryContents dir
 
 
 -- $i18n
@@ -698,5 +809,57 @@ isCustomAction = isUpper . T.head
 -- v@, @'Action' v@ and @Collective v@ to be instances of
 -- @'RenderMessage'@. Even if you plan to support only one language,
 -- you might not be happy by the default choices for each of these
--- stuff
+-- stuff. In either of these cases you need to create translation
+-- files for these data types.
+--
+-- Defining the render message instances involves setting up of the
+-- necessary translation files in an appropriate directory structure.
+-- The directory structure is as follows:
+--
+--   1. On the topmost level there is an optional directory per
+--      entity. Create a directory for which you want to configure
+--      these message types.
+--
+--   2. For each entity there are three (optional) subdirectories
+--
+--      i.  action: This contains the translation files for the associated type
+--          @'Action'@ of the entity
+--
+--      ii. attribute: This contains the translation files for the
+--          associated type @'Attribute'@ of the entity
+--
+--      iii. collective: Message files for transaltion of the
+--           @'Collective'@ datatype
+--
+-- The translation files for attributes consists of lines of attribute
+-- name and attribute title separated by a ':' (colon). Attribute
+-- names follow the naming convention what we have defined before,
+-- i.e. names starting with lower case denote database attributes and
+-- those that starts with upper case denote derived attributes. As an
+-- example, the fr.msg file that defines the two attributes, first a
+-- database attribute @firstName@ and second a derived attribute
+-- @NameAndEmail@ would be:
+--
+-- > firstName: Prénom
+-- > NameAndEmail: Nom et email
+--
+-- The translation files for actions are similar except that we use
+-- action names instead of attribute name.
+--
+-- The translation files for @Collective@ follows the convention
+-- followed by the function @mkMessageFor@.
 
+parseMesgDir :: FilePath  -- ^ The directory where the transation
+                          -- files are
+             -> IO [LangTrans]
+parseMesgDir dir = getMessageFiles dir >>= sequence . map (parseMesg dir)
+
+
+parseMesg :: FilePath -> FilePath -> IO LangTrans
+parseMesg dir f   = do cont  <- TIO.readFile (dir </> f)
+                       return (langName f, parse cont)
+    where fieldValue x = (T.strip u, T.strip $ T.tail v)
+                 where (u,v) = T.breakOn ":" x
+          parse cont   = [ fieldValue x | x <-  T.lines cont
+                                        , not $ T.null $ T.strip x
+                         ]
