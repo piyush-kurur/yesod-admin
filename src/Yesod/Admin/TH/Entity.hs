@@ -494,7 +494,7 @@ defReadAttrs      :: AdminInterface -> Maybe DecQ
 defSelectionAttrs ai = fmap genCode $ list ai
     where en         = name ai
           genCode    = defAttrListVar 'selectionPageAttributes en
-                     . map  unSort
+                     . map unSort
 
 defReadAttrs ai   = fmap genCode $ readPage ai
     where en      = name ai
