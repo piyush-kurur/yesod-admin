@@ -63,3 +63,6 @@ Library
                , shakespeare-css >=1.0 && <1.1
                , hamlet >=1.0 && <1.1
                , persistent >=0.9 && <0.10
+               , directory
+               , filepath
+
