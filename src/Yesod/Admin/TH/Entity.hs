@@ -849,6 +849,21 @@ getMessageFiles dir = filter isMessageFile <$> getDirectoryContents dir
 -- The translation files for @Collective@ follows the convention
 -- followed by the function @mkMessageFor@.
 
+-- | Path to the translation file for actions.
+actionTransPath :: FilePath       -- ^ Base admin directory
+                -> AdminInterface -- ^ The admin interfaces for the entity
+                -> FilePath
+
+actiontransPath base ai = base </> en </> "action"
+   where en = T.unpack $ name ai
+
+-- | Path to the translation file for actions.
+attributeTransPath :: FilePath
+                   -> AdminInterface
+                   -> FilePath
+attributeTransPath base ai = base </> en </> "attribute"
+   where en = T.unpack $ name ai
+
 parseMesgDir :: FilePath  -- ^ The directory where the transation
                           -- files are
              -> IO [LangTrans]
