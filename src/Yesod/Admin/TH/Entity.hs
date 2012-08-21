@@ -878,3 +878,44 @@ parseMesg dir f   = do cont  <- TIO.readFile (dir </> f)
           parse cont   = [ fieldValue x | x <-  T.lines cont
                                         , not $ T.null $ T.strip x
                          ]
+
+-- | Check action translations.
+checkActionTrans :: AdminInterface
+                 -> LangTrans
+                 -> Either String LangTrans
+checkActionTrans ai trans
+                 | not $ null err = Left err
+                 | otherwise      = Right trans
+  where err     = errTrans (name ai) "Action" actions trans
+        actions = fromJust action ai
+
+
+-- | Check attribute translations.
+checkAttributeTrans :: AdminInterface
+                    -> LangTrans
+                    -> Either String LangTrans
+checkAttributeTrans ai trans
+                    | not $ null err = Left err
+                    | otherwise      = Right trans
+  where err      = errTrans (name ai) "Attributes" attrs trans
+        attrs    = dbAttrs ai ++ derivedAttrs ai
+
+
+-- | Check error in translations. It looks for missing names and
+-- unknown names.
+errTrans :: Text      -- ^ Entity name
+         -> Text      -- ^ Type name Action/Attribute
+         -> [Text]    -- ^ Names
+         -> LangTrans -- ^ The translation
+         -> String
+
+errTrans en ty allNames (lang,mdefs)
+  = combineErr (T.unpack tag)
+               (T.unpack errs)
+  where defNames = snd <$> mdefs
+        unknown  = mkErrs "unknown names " $ defNames \\ allNames
+        missing  = mkErrs "missing definitions of " $ allNames \\ defNames
+        tag         = T.intercalate [en, ty, lang]
+        errs        = filter (not . T.null) [missing, unknown]
+        mkErrs t ts = if null ts then ""
+                         else t `T.append` T.intercalate ", " ts
