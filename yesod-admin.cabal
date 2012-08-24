@@ -26,6 +26,8 @@ Library
                  , Yesod.Admin.Dispatch
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
+                 , Yesod.Admin.TH.Entity.AdminInterface
+                 , Yesod.Admin.TH.Error
                  , Yesod.Admin.Message
                  , Yesod.Admin.Message.English
                  , Yesod.Admin.Render

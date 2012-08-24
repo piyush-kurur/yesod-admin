@@ -36,6 +36,7 @@ import Yesod.Admin.TH
 
 import Yesod.Admin.Routes
 import Yesod.Admin.Dispatch()
+import Yesod.Admin.TH.Entity.AdminInterface()
 
 
 {- $usage
@@ -89,7 +90,7 @@ admin interfaces is created. In the example below, the type @Person@
 will be listed using two fields name and age. For the type @Group@ the
 default administrative setting is used. Details on how to modify
 administrative setting is available in the documentation for the
-module "Yesod.Admin.TH.Entity".
+module "Yesod.Admin.TH.Entity.AdminInterface".
 
 > share [ mkAdminClasses
 >       , mkPersist sqlSettings
