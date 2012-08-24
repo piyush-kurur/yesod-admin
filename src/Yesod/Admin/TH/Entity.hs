@@ -50,6 +50,26 @@ type Text = T.Text
 mkAdminInstances :: [EntityDef] -> DecsQ
 mkAdminInstances edefs =  mkAdminInstances' edefs
 
+-- | Derive an instance of @`Administrable`@ for the type @v@ given
+-- the AdminInterface for @v@.
+deriveAdministrable  :: AdminInterface
+                     -> DecsQ
+deriveAdministrable' :: AdminInterface
+                     -> DecQ
+deriveAdministrable  = fmap (:[]) . deriveAdministrable'
+
+-- | Derive an instance of `InlineDisplay` for an entity give its
+-- administrative interface.
+deriveInlineDisplay  :: AdminInterface -> DecsQ
+deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
+
+
+-- | Derive an instance of `AttributeDisplay` for an entity give its
+-- administrative interface.
+deriveAttributeDisplay :: AdminInterface
+                       -> DecsQ
+deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
+
 
 -- | This combinator is similar to @`mkAdminInstances`@ but does not
 -- derive the @`RenderMessage`@ instance for attributes and actions of
@@ -68,18 +88,12 @@ mkAdminInstances' edefs = do aE <- defEns
           defEns     = valD (varP $ mkName "adminEntities") body []
 
 
-
--- | Derive an instance of `InlineDisplay` for an entity give its
--- administrative interface.
-deriveInlineDisplay  :: AdminInterface -> DecsQ
-
 -- | Similar to `deriveInlineDisplay` but does not wrap the
 -- declaration inside a list. Not very useful in the wild as splicing
 -- expects `DecsQ` instead `DecQ` but useful in defining other
 -- template haskell function. Currently not exported.
 deriveInlineDisplay' :: AdminInterface
                      -> DecQ
-deriveInlineDisplay  = fmap (:[]) . deriveInlineDisplay'
 deriveInlineDisplay' ai =
                mkInstance [persistStoreP b m]
                           ''InlineDisplay [b, m, persistType en b]
@@ -92,11 +106,6 @@ deriveInlineDisplay' ai =
            instBody = [valD (varP 'inlineDisplay) body []]
 
 
--- | Derive an instance of `AttributeDisplay` for an entity give its
--- administrative interface.
-deriveAttributeDisplay :: AdminInterface
-                       -> DecsQ
-deriveAttributeDisplay = fmap (:[]) . deriveAttributeDisplay'
 
 -- | Same as `deriveAttributeDisplay` but does not wrap the
 -- declaration inside a list. Not very useful in the wild as splicing
@@ -118,13 +127,6 @@ deriveAttributeDisplay' ai
                   | otherwise    = [|inlineDisplay . $fname|]
                      where fname = varE $ mkNameT $ attributeFieldName en at
 
--- | Derive an instance of @`Administrable`@ for the type @v@ given
--- the AdminInterface for @v@.
-deriveAdministrable  :: AdminInterface
-                     -> DecsQ
-deriveAdministrable' :: AdminInterface
-                     -> DecQ
-deriveAdministrable  = fmap (:[]) . deriveAdministrable'
 
 deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
                                      $ instBody
@@ -142,16 +144,6 @@ deriveAdministrable' ai = mkInstance [] ''Administrable [persistType en b]
 
 
 
--- $titles
---
--- Actions and Attributes should be instances of
--- @`RenderMessage`@ and the default instances are derived by the TH code. The
--- default rule .This allows us to i18nize the admin
--- site.
---
-
-defaultMessage :: Text -> ExpQ
-defaultMessage = textL . capitalise . unCamelCase
 
 
 
@@ -265,12 +257,18 @@ defDBAction ai = singleArgFunc 'dbAction
 
 
 
+-- | The default message associated with a text.
+defaultMessage :: Text -> ExpQ
+defaultMessage = textL . capitalise . unCamelCase
+
+
 {- The I18N code:
 
 We start by defining some local type aliases to improve code
 readability. These are not meant to be exported.
 
 -}
+
 
 type MesgDef      = (Text, Text)         -- ^ message constructor and
                                          -- its rendering text
