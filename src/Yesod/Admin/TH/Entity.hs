@@ -12,8 +12,6 @@ Module to generate admin code for persistent entries.
 
 module Yesod.Admin.TH.Entity
        (
-       -- * Customisation and i18n.
-       -- $i18n
          mkAdminInstances
        , deriveInlineDisplay
        , deriveAttributeDisplay
