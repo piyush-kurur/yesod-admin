@@ -6,8 +6,9 @@ module Yesod.Admin.TH.Entity.AdminInterface
        (
        -- * The admin section
        -- $adminSection
-         
+
          AdminInterface(..)
+       , attributes
        , entityDefToInterface
        , withEntityDefs
        -- * Attributes
@@ -15,6 +16,8 @@ module Yesod.Admin.TH.Entity.AdminInterface
        , isDB
        , isDerived
        , attributeCons
+       , attributeConsP
+       , attributeConsE
        , attributeFieldName
        , attributeFunctionName
        , withoutSortOpt
@@ -26,6 +29,7 @@ module Yesod.Admin.TH.Entity.AdminInterface
        , isCustomAction
        , actionFunctionName
        , actionCons
+       , actionConsP
        ) where
 
 
@@ -59,6 +63,10 @@ data AdminInterface
                       , dbAttrs   :: [Text]
                       , derivedAttrs :: [Text]
                       } deriving Show
+
+-- | Get the list of attribute.
+attributes :: AdminInterface -> [Text]
+attributes ai = dbAttrs ai ++ derivedAttrs ai
 
 -- | Creates the starting admin interfaces.
 defaultInterface :: EntityDef -> AdminInterface
@@ -236,6 +244,14 @@ attributeCons   :: Text    -- ^ Entity name
 attributeCons = constructor "Attribute"
 
 
+-- | Creates the attribute constructor pattern.
+attributeConsP  :: Text -> Text -> PatQ
+attributeConsP e attr = conP (mkNameT $ attributeCons e attr) []
+
+-- | Create the attribute constructor expression
+attributeConsE  :: Text -> Text -> ExpQ
+attributeConsE e attr = conE $ mkNameT $ attributeCons e attr
+
 -- | Creates the attribute field name.
 attributeFieldName :: Text -> Text -> Text
 attributeFieldName en fn = unCapitalise $ camelCaseUnwords [en, fn]
@@ -290,6 +306,11 @@ actionCons en act
    | isUpdate act = constructor "Update" en act
    | otherwise    = constructor "Action"  en act
 
+-- | Create the action consructor pattern
+actionConsP  :: Text -> Text -> PatQ
+actionConsP e attr = conP (mkNameT $ actionCons e attr) []
+
+-- | The function name associated with an action
 actionFunctionName  :: Text  -- ^ Entity name
                     -> Text  -- ^ Action name
                     -> Text
