@@ -6,6 +6,13 @@ module Yesod.Admin.TH.Entity.I18N
        (
        -- * Customisation and i18n.
        -- $i18n
+
+       -- ** Directory structure.
+       -- $directoryStructure
+
+       -- ** Translation file syntax
+       -- $transFile
+
        ) where
 
 import Control.Applicative
@@ -27,6 +34,16 @@ import Yesod.Admin.TH.Entity.AdminInterface
 
 type Text = T.Text
 
+-- $i18n
+--
+-- For an entity @v@ the associated @'Attribute' v@, @'Action' v@ and
+-- the message datatype 'Collective' has to be an instance of
+-- 'RenderMessage'. The default instance for @'Attribute'@ and
+-- @'Action'@ prints the name in uncamelcased form, i.e. @firstName@
+-- and @nameAndEmail@ becomes @First name@ and @Name and email@
+-- respectively, whatever be your language setting. In case you want
+-- support multiple languages or just change the default translation
+-- you have to define the necessary translation files.
 
 -- | The default message associated with a text.
 defaultMessage :: Text -> ExpQ
@@ -168,33 +185,50 @@ getMessageFiles :: FilePath -> IO [FilePath]
 getMessageFiles dir = filter isMessageFile <$> getDirectoryContents dir
 
 
--- $i18n
+-- $directoryStructure
 --
--- For an entity @v@ the admin site requires the types @'Attribute'
--- v@, @'Action' v@ and @Collective v@ to be instances of
--- @'RenderMessage'@. Even if you plan to support only one language,
--- you might not be happy by the default choices for each of these
--- stuff. In either of these cases you need to create translation
--- files for these data types.
+-- Given a base directory, the translation files of different
+-- persistent entities have to be placed according to the following
+-- directory structure.
 --
--- Defining the render message instances involves setting up of the
--- necessary translation files in an appropriate directory structure.
--- The directory structure is as follows:
---
---   1. On the topmost level there is an optional directory per
---      entity. Create a directory for which you want to configure
---      these message types.
+--   1. On the topmost level, i.e. in the base directory, there is an
+--      (optional) directory per entity. If the director for an entity
+--      does not exist, then the rendering is governed by the default
+--      rules as described before.
 --
 --   2. For each entity there are three (optional) subdirectories
 --
---      i.  action: This contains the translation files for the associated type
---          @'Action'@ of the entity
+--      i.  action: This contains the translation files for the
+--          associated type @'Action'@ of the entity.
 --
 --      ii. attribute: This contains the translation files for the
---          associated type @'Attribute'@ of the entity
+--          associated type @'Attribute'@ of the entity.
 --
 --      iii. collective: Message files for transaltion of the
---           @'Collective'@ datatype
+--      @'Collective'@ datatype.
+--
+--      The translation files are files that end with an extension
+--      "msg". Again, if any of the directory is ommited then the
+--      corresponding associated type have the default rendering
+
+-- | Path to the translation file for actions.
+actionTransPath :: FilePath       -- ^ Base admin directory
+                -> AdminInterface -- ^ The admin interfaces for the entity
+                -> FilePath
+
+actionTransPath base ai = base </> en </> "action"
+   where en = T.unpack $ name ai
+
+-- | Path to the translation file for actions.
+attributeTransPath :: FilePath
+                   -> AdminInterface
+                   -> FilePath
+attributeTransPath base ai = base </> en </> "attribute"
+   where en = T.unpack $ name ai
+
+
+
+-- $transFile
 --
 -- The translation files for attributes consists of lines of attribute
 -- name and attribute title separated by a ':' (colon). Attribute
@@ -214,20 +248,11 @@ getMessageFiles dir = filter isMessageFile <$> getDirectoryContents dir
 -- The translation files for @Collective@ follows the convention
 -- followed by the function @mkMessageFor@.
 
--- | Path to the translation file for actions.
-actionTransPath :: FilePath       -- ^ Base admin directory
-                -> AdminInterface -- ^ The admin interfaces for the entity
-                -> FilePath
+-- | Create the translation Text from message definitions.
+transText :: [MesgDef] -> Text
+transText = T.unlines . map sep
+     where sep (f,d) = f <> ":" <> d
 
-actionTransPath base ai = base </> en </> "action"
-   where en = T.unpack $ name ai
-
--- | Path to the translation file for actions.
-attributeTransPath :: FilePath
-                   -> AdminInterface
-                   -> FilePath
-attributeTransPath base ai = base </> en </> "attribute"
-   where en = T.unpack $ name ai
 
 parseMesgDir :: FilePath  -- ^ The directory where the transation
                           -- files are
