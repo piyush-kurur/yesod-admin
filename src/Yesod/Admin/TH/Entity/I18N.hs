@@ -12,12 +12,16 @@ module Yesod.Admin.TH.Entity.I18N
 
        -- ** Translation file syntax
        -- $transFile
+         
+         mkDefaultTransFiles
 
        ) where
 
 import Control.Applicative
+import Control.Monad
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Language.Haskell.TH
@@ -25,7 +29,7 @@ import System.Directory
 import System.FilePath
 import Text.Shakespeare.I18N
 
-
+import Yesod.Admin.Class
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.TH.Error
@@ -46,8 +50,8 @@ type Text = T.Text
 -- you have to define the necessary translation files.
 
 -- | The default message associated with a text.
-defaultMessage :: Text -> ExpQ
-defaultMessage = textL . capitalise . unCamelCase
+defaultMessage :: Text -> Text
+defaultMessage = capitalise . unCamelCase
 
 
 {- The I18N code:
@@ -56,7 +60,6 @@ We start by defining some local type aliases to improve code
 readability. These are not meant to be exported.
 
 -}
-
 
 type MesgDef      = (Text, Text)         -- ^ message constructor and
                                          -- its rendering text
@@ -68,8 +71,16 @@ type LangPatTrans = (ExpQ, [MesgPatDef]) -- ^ language translation
                                          -- pattern and its message
                                          -- definition pattern
 
+-- | The default message definition for actions of an entity.
+defaultActionMesgDef :: AdminInterface -> [MesgDef]
+defaultActionMesgDef ai = [ (a, defaultMessage a) | a <- fromJust $ action ai ]
+
+-- | The default message definition for attributes of an entity.
+defaultAttributeMesgDef :: AdminInterface -> [MesgDef]
+defaultAttributeMesgDef ai = [ (a, defaultMessage a) | a <- attributes ai ]
+
 -- | Given a function to generate the constructor name and a message
--- definition returns the corresponding definition in TH form.
+-- definition, returns the corresponding definition in TH form.
 
 toMesgPatDef :: (Text -> PatQ)  -- ^ constructor generator
              -> MesgDef         -- ^ The message definition
@@ -176,6 +187,10 @@ mkCase v = caseE (varE v) . map mkCl
 langName :: FilePath -> Lang
 langName = T.pack . dropExtension . takeFileName
 
+-- | Get the language file name from language
+langFile :: Lang -> FilePath
+langFile lang = T.unpack lang <.> "msg"
+
 -- | Check if the file is a valid message file.
 isMessageFile :: FilePath -> Bool
 isMessageFile f = takeExtension f == (extSeparator:"msg")
@@ -269,6 +284,35 @@ parseMesg dir f   = do cont  <- TIO.readFile (dir </> f)
                                         , not $ T.null $ T.strip x
                          ]
 
+-- | Given an administrative interface this function generates the
+-- default translation files for the `Action` and `Attribute`
+-- associated type of the entity. This function is useful if you want
+-- to tweak the default instance. The function will not overwrite the
+-- translation file if it already exists. Hence it is safe to put this
+-- function in your persistent entity definition.
+
+mkDefaultTransFiles :: FilePath -- ^ Base admin directory
+                    -> Lang     -- ^ Which is the default language.
+                    -> [AdminInterface]
+                    -> Q ()
+mkDefaultTransFiles baseFP lang 
+  = runIO . sequence_ . map (writeTrans baseFP lang)
+   
+writeTrans :: FilePath -> Lang -> AdminInterface -> IO ()
+writeTrans fp lang ai = do writeButDontOverWrite actPath actTrans
+                           writeButDontOverWrite attPath attTrans
+      where actPath  = actionTransPath fp ai </> langFile lang
+            attPath  = attributeTransPath fp ai </> langFile lang
+            actTrans = transText $ defaultActionMesgDef ai
+            attTrans = transText $ defaultAttributeMesgDef ai
+         
+writeButDontOverWrite :: FilePath -> Text -> IO ()
+writeButDontOverWrite fp txt 
+  = do cond <- doesFileExist fp
+       when (not cond) $ do
+            createDirectoryIfMissing True $ dropFileName fp
+            TIO.writeFile fp txt
+                                  
 -- | Check action translations.
 checkActionTrans :: AdminInterface
                  -> LangTrans
