@@ -203,18 +203,12 @@ translateClause ldefs = do
   where newVarEPat nm = do v <- newName nm; return (varE v, varP v)
 
 
--- | Get the language name from the file name.
-langName :: FilePath -> Lang
-langName = T.pack . dropExtension . takeFileName
 
 --
 -- Finally we put it together in this message instance creating
 -- function
 --
 
--- | Check if the file is a valid message file.
-isMessageFile :: FilePath -> Bool
-isMessageFile f = takeExtension f == (extSeparator:"msg")
 
 -- | The workhorse function for i18n.
 mkMessage :: TypeQ          -- ^ For which type
@@ -259,9 +253,18 @@ mkMessage msgTyp trans defs = do
 --      iii. collective: Message files for transaltion of the
 --      @'Collective'@ datatype.
 --
---      The translation files are files that end with an extension
---      "msg". Again, if any of the directory is ommited then the
---      corresponding associated type have the default rendering
+--      The translation files are files whose name consist of the
+--      language string ending with an extension "msg". Again, if any
+--      of the directory is ommited then the corresponding associated
+--      type have the default rendering
+
+-- | Get the language name from the file name.
+langName :: FilePath -> Lang
+langName = T.pack . dropExtension . takeFileName
+
+-- | Get the language file name from language
+langFile :: Lang -> FilePath
+langFile lang = T.unpack lang <.> "msg"
 
 -- | Path to the translation file for actions.
 actionTransPath :: FilePath       -- ^ Base admin directory
@@ -279,6 +282,14 @@ attributeTransPath base ai = base </> en </> "attribute"
    where en = T.unpack $ name ai
 
 
+
+-- | Check if the file is a valid message file.
+isMessageFile :: FilePath -> Bool
+isMessageFile f = takeExtension f == (extSeparator:"msg")
+
+-- | Get all the message files.
+getMessageFiles :: FilePath -> IO [FilePath]
+getMessageFiles dir = filter isMessageFile <$> getDirectoryContents dir
 
 -- $transFile
 --
