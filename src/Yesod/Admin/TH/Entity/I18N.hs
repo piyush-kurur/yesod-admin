@@ -320,7 +320,11 @@ transText = T.unlines . map sep
 parseMesgDir :: FilePath  -- ^ The directory where the transation
                           -- files are
              -> IO [LangTrans]
-parseMesgDir dir = getMessageFiles dir >>= sequence . map (parseMesg dir)
+parseMesgDir dir = do
+   exists <- doesDirectoryExist dir
+   if exists then  getMessageFiles dir
+                   >>= sequence . map (parseMesg dir)
+             else return []
 
 
 parseMesg :: FilePath -> FilePath -> IO LangTrans
