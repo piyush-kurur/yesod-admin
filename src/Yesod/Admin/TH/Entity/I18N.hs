@@ -109,7 +109,113 @@ toActionPatDef :: Text        -- ^ Entity name
 toActionPatDef entity (act, txt) = (actionConsP entity act, textL txt)
 
 
+--
+-- Now the actual TH code generators. The render message instance
+-- would look as follows
+--
+-- renderMessage master (l:ls) msg
+--               | l == "en  = case msg of ...
+--               | l == "fr" = case msg of ..
+--               ...
+--               | otherwise = renderMessage master ls msg
+--
+-- renderMessage _ _ msg     = case msg of ...
+--
+--
+-- The case expression depends on the MesgDef for the given
+-- language. This is the first function that we write.
+--
 
+
+
+
+-- | Creates a case expression which generates the actual rendering.
+mkCase :: ExpQ          -- ^ message variable
+       -> [MesgPatDef]  -- ^ message definition
+       -> ExpQ
+mkCase mesgE = caseE mesgE . map mkCl
+    where mkCl (p,b) = match p (normalB b) []
+
+--
+-- The above function definition requires two kinds of clauses. One
+-- for the default message definition and the other for the guarded
+-- one. We first give the default clause.
+--
+--
+
+
+-- | Create a default clause out of the message definition.
+defaultClause :: [MesgPatDef] -> ClauseQ
+defaultClause mdef = do msgV <- newName "msg"
+                        clause [wildP, wildP, varP msgV]
+                               (normalB $ mkCase (varE msgV) mdef)
+                               []
+
+--
+-- Now for the translation clause. The translation clause consists
+-- guards where a particular guard checks if the next prefered
+-- language is a given language in the translation. So we define a
+-- function which given a language translation pattern given the
+-- corresponding guard.
+--
+
+-- | Create a guard with a given language expression.
+langGuard :: ExpQ          -- ^ lang variable name
+          -> ExpQ          -- ^ mesage variable
+          -> LangPatTrans  -- ^ the language definition
+          -> Q (Guard, Exp)
+langGuard lE msgE (lval,mpats) = normalGE [| $lE == $lval |]
+                                          $ mkCase msgE mpats
+
+--
+-- Finally we need a guard that iterates through the rest of the
+-- preference list.
+--
+
+-- | Check rendering with the rest of the languages
+langRest :: ExpQ -- ^ master var
+         -> ExpQ -- ^ rest of the languages
+         -> ExpQ -- ^ message variable
+         -> Q (Guard, Exp)
+langRest masterE lsE msgE = normalGE [| otherwise |]
+                                     [| renderMessage $masterE $lsE $msgE |]
+
+--
+-- We are now ready to define the translation clause.
+--
+--
+
+translateClause :: [LangPatTrans] -> ClauseQ
+translateClause ldefs = do
+  (masterE,masterP) <- newVarEPat "master"
+  (lE     ,     lP) <- newVarEPat "l"
+  (lsE    ,    lsP) <- newVarEPat "ls"
+  (msgE   ,   msgP) <- newVarEPat "msg"
+                      
+  clause [masterP
+         , conP '(:) [lP,lsP]
+         , msgP
+         ]
+         ( guardedB $  map (langGuard lE msgE) ldefs 
+                    ++ [langRest masterE lsE msgE]
+         )
+         []
+
+  where newVarEPat nm = do v <- newName nm; return (varE v, varP v)
+
+
+-- | Get the language name from the file name.
+langName :: FilePath -> Lang
+langName = T.pack . dropExtension . takeFileName
+
+--
+-- Finally we put it together in this message instance creating
+-- function
+--
+
+-- | Check if the file is a valid message file.
+isMessageFile :: FilePath -> Bool
+isMessageFile f = takeExtension f == (extSeparator:"msg")
 
 -- | The workhorse function for i18n.
 mkMessage :: TypeQ          -- ^ For which type
@@ -117,87 +223,19 @@ mkMessage :: TypeQ          -- ^ For which type
                             -- instance.
           -> [MesgPatDef]   -- ^ The default definitions
           -> DecQ
-mkMessage msgTyp trans defs =
-   mkInstance [] ''RenderMessage [master, msgTyp]
-                 [funD 'renderMessage cls]
-   where cls = if null trans then [defaultClause defs]
+mkMessage msgTyp trans defs = do
+        masterT <- varT <$> newName "master"
+        mkInstance [] ''RenderMessage [masterT, msgTyp]
+                      [funD 'renderMessage cls]
+  where cls = if null trans then [defaultClause defs]
                   else [translateClause trans, defaultClause defs]
-         master = varT $ mkName "master"
 
 
-
--- | Create a default clause out of the message definition.
-defaultClause :: [MesgPatDef] -> ClauseQ
-defaultClause mdef = do msgV <- newName "msg"
-                        clause [wildP, wildP, varP msgV]
-                               (normalB $ mkCase msgV mdef)
-                               []
-
-translateClause :: [LangPatTrans] -> ClauseQ
-translateClause ldefs = do master <- newName "master"
-                           l      <- newName "l"
-                           ls     <- newName "ls"
-                           msg    <- newName "msg"
-                           trans master l ls msg
-  where trans master l ls msg = clause [ masterP
-                                       , lstPat
-                                       , msgP
-                                       ]
-                                       (guardedB guards)
-                                       []
-              where masterP = varP master
-                    lstPat  = conP '(:) [varP l, varP ls]
-                    msgP    = varP msg
-                    guards  = map (langGuard l msg) ldefs
-                              ++ [ langRest master ls msg ]
-
-
-
--- | Create a guard with a given language expression.
-langGuard :: Name          -- ^ lang variable name
-          -> Name          -- ^ mesage variable
-          -> LangPatTrans  -- ^ the language definition
-          -> Q (Guard, Exp)
-langGuard l msg (lval,mpats) = normalGE [| $lexp == $lval |]
-                                        $ mkCase msg mpats
-  where lexp = varE l
-
--- | Check rendering with the rest of the languages
-langRest :: Name -- ^ master var
-         -> Name -- ^ rest of the languages
-         -> Name -- ^ message variable
-         -> Q (Guard, Exp)
-langRest master ls msg = normalGE [| otherwise |]
-                                  [| renderMessage $masterE $lsE $msgE |]
-  where masterE = varE master
-        lsE     = varE ls
-        msgE    = varE msg
-
-
--- | Creates a case expression which generates the actual rendering.
-mkCase :: Name          -- ^ message variable
-       -> [MesgPatDef]  -- ^ message definition
-       -> ExpQ
-mkCase v = caseE (varE v) . map mkCl
-    where mkCl (p,b) = match p (normalB b) []
-
-
-
--- | Get the language name from the file name.
-langName :: FilePath -> Lang
-langName = T.pack . dropExtension . takeFileName
-
--- | Get the language file name from language
-langFile :: Lang -> FilePath
-langFile lang = T.unpack lang <.> "msg"
-
--- | Check if the file is a valid message file.
-isMessageFile :: FilePath -> Bool
-isMessageFile f = takeExtension f == (extSeparator:"msg")
-
--- | Get all the message files.
-getMessageFiles :: FilePath -> IO [FilePath]
-getMessageFiles dir = filter isMessageFile <$> getDirectoryContents dir
+-- Parsing translations
+-- --------------------
+--
+--
+                       
 
 
 -- $directoryStructure
