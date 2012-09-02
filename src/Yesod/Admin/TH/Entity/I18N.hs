@@ -81,7 +81,6 @@ defaultAttributeMesgDef ai = [ (a, defaultMessage a) | a <- attributes ai ]
 
 -- | Given a function to generate the constructor name and a message
 -- definition, returns the corresponding definition in TH form.
-
 toMesgPatDef :: (Text -> PatQ)  -- ^ constructor generator
              -> MesgDef         -- ^ The message definition
              -> MesgPatDef
