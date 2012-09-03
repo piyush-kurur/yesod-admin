@@ -32,7 +32,6 @@ module Yesod.Admin.TH.Entity.AdminInterface
        , actionConsP
        ) where
 
-
 import Data.Char
 import Data.List
 import Data.Maybe
@@ -84,7 +83,7 @@ defaultInterface ed
 -- | Parse the administrative interface from the entity definition.
 entityDefToInterface :: EntityDef -> Either String AdminInterface
 entityDefToInterface ed = do ai <- setFields
-                             chk $ setDefaults ai
+                             chk $ setUnsetFields ai
 
    where adminLines     = fromMaybe [] $ M.lookup "Admin" $ entityExtra ed
          startAI        = defaultInterface ed
@@ -155,18 +154,18 @@ withEntityDefs genCode edefs = case err of
 
 -- | Once the admin section is parsed, this function sets the default
 -- values of all unset fields.
-setDefaults :: AdminInterface -> AdminInterface
-setDefaults ai = ai { action        = Just act
-                    , inline        = Just inl
-                    , list          = Just lst
-                    , readPage      = Just rp
-                    , derivedAttrs  = nub derAttrs
-                    }
+setUnsetFields :: AdminInterface -> AdminInterface
+setUnsetFields ai = ai { action        = Just act
+                       , inline        = Just inl
+                       , list          = Just lst
+                       , readPage      = Just rp
+                       , derivedAttrs  = nub derAttrs
+                       }
   where act      = fromMaybe ["delete"] $ action ai
         inl      = fromMaybe (head $ dbAttrs ai) $ inline ai
         lst      = fromMaybe [inl] $ list ai
         rp       = fromMaybe (dbAttrs ai) $ readPage ai
-        derAttrs = filter isDerived $ [inl] ++ lst ++ rp
+        derAttrs = filter isDerived $ [inl] ++ map withoutSortOpt lst ++ rp
 
 
 getSortOpt :: Text    -- ^ Entity name
