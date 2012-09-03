@@ -12,8 +12,10 @@ module Yesod.Admin.TH.Entity.I18N
 
        -- ** Translation file syntax
        -- $transFile
-         
-         mkDefaultTransFiles
+
+         mkAdminMessageI18N
+       , mkAdminMessageDefault
+       , mkDefaultTransFiles
 
        ) where
 
@@ -37,6 +39,88 @@ import Yesod.Admin.TH.Entity.AdminInterface
 
 
 type Text = T.Text
+
+
+-- | Given the administrative interface for an list of entities, this
+-- TH function creates 'RenderMessage' instance for the types
+-- @'Action' v@, @'Attribute' v@ and @'Collective' v@ for each of the
+-- entity @v@ in the list. Its first argument is a directory where the
+-- translation files of the entities reside (as described in the
+-- section directory structure).
+mkAdminMessageI18N :: FilePath  -- ^ Directory containing the
+                                 -- translation file
+                   -> Lang      -- ^ Default language
+                   -> [AdminInterface]
+                   -> DecsQ
+mkAdminMessageI18N dir lang = sequence . concatMap mkDef
+   where mkDef ai = [ mkAttributeMsg dir lang ai
+                    , mkActionMsg dir lang ai
+                    ]
+
+-- | Generate default "RenderMessage" instances for all entities.
+--
+mkAdminMessageDefault :: [AdminInterface]
+                      -> DecsQ
+mkAdminMessageDefault = sequence . concatMap mkDef
+   where mkDef ai = [ mkActionMesgDefault ai
+                    , mkAttributeMesgDefault ai
+                    ]
+
+-- | Create 'RenderMessage' instance for @'Action'@.
+mkActionMsg :: FilePath
+            -> Lang
+            -> AdminInterface
+            -> DecQ
+mkActionMsg dir lang ai = do
+    unchecked <- runIO    $ parseMesgDir path
+    trans     <- sequence $ checkActionTrans ai <$> unchecked
+    if null trans then msgGen [] defMesg
+       else maybe (fail err) (msgGen trans) $ lookup lang trans
+  where defMesg = defaultActionMesgDef ai
+        path    = actionTransPath dir ai
+        en      = name ai
+        msgType = [t| Action $(conT $ mkNameT en) |]
+        msgGen  = mkMsg msgType (actionCons en)
+        err     = T.unpack en
+                <> ":Action: "
+                <> "missing translation file "
+                <> langFile lang
+
+-- | Create the default RenderMessage instance for @'Action'@.
+mkActionMesgDefault :: AdminInterface
+                    -> DecQ
+mkActionMesgDefault ai = mkMsg msgTyp (actionCons en) [] defs
+  where msgTyp   = [t| Action $(conT $ mkNameT en) |]
+        defs     = defaultActionMesgDef ai
+        en       = name ai
+
+-- | Create the default RenderMessage instance for Attribute.
+mkAttributeMesgDefault :: AdminInterface
+                       -> DecQ
+mkAttributeMesgDefault ai = mkMsg msgTyp (attributeCons en) [] defs
+  where msgTyp   = [t| Attribute $(conT $ mkNameT en) |]
+        defs     = defaultAttributeMesgDef ai
+        en       = name ai
+
+-- | Create 'RenderMessage' instance for @'Attribute'@.
+mkAttributeMsg :: FilePath
+               -> Lang
+               -> AdminInterface
+               -> DecQ
+mkAttributeMsg dir lang ai = do
+    unchecked <- runIO    $ parseMesgDir path
+    trans     <- sequence $ checkAttributeTrans ai <$> unchecked
+    if null trans then msgGen [] defMesg
+       else maybe (fail err) (msgGen trans) $ lookup lang trans
+  where defMesg = defaultAttributeMesgDef ai
+        path    = attributeTransPath dir ai
+        en      = name ai
+        msgType = [t| Attribute $(conT $ mkNameT en) |]
+        msgGen  = mkMsg msgType (attributeCons en)
+        err     = T.unpack en
+                <> ":Action: "
+                <> "missing translation file "
+                <> langFile lang
 
 -- $i18n
 --
@@ -80,32 +164,48 @@ defaultAttributeMesgDef :: AdminInterface -> [MesgDef]
 defaultAttributeMesgDef ai = [ (a, defaultMessage a) | a <- attributes ai ]
 
 -- | Given a function to generate the constructor name and a message
--- definition, returns the corresponding definition in TH form.
-toMesgPatDef :: (Text -> PatQ)  -- ^ constructor generator
+-- definition, returns message definition pattern.
+toMesgPatDef :: (Text -> Text)  -- ^ constructor generator
              -> MesgDef         -- ^ The message definition
              -> MesgPatDef
-toMesgPatDef consGen (consName, txt) = (consGen consName, textL txt)
+toMesgPatDef consGen (consName, txt) = ( conP (mkNameT $ consGen consName) []
+                                       , textL txt
+                                       )
 
--- | Given a function to generate the constructor name and a language translation
--- returns the
-toLangPatTrans :: (Text -> PatQ) -- ^ The constructor generator
+-- | Given a function to generate the constructor name and a language
+-- translation, returns the language translation pattern.
+toLangPatTrans :: (Text -> Text) -- ^ The constructor generator
                -> LangTrans      -- ^ The language translation
                -> LangPatTrans
 
 toLangPatTrans consGen (lang, mdefs)
   = (textL lang, toMesgPatDef consGen <$> mdefs)
 
--- | Generate an attribute message definition.
+-- | Generate an attribute message definition pattern.
 toAttributePatDef :: Text       -- ^ Entity name
                   -> MesgDef    -- ^ The message definition
                   -> MesgPatDef
-toAttributePatDef entity (at, txt) = (attributeConsP entity at, textL txt)
+toAttributePatDef entity = toMesgPatDef $ attributeCons entity
 
--- | Generate an action message definition.
+-- | Generate an attribute translation pattern.
+toAttributePatTrans :: Text
+                    -> LangTrans
+                    -> LangPatTrans
+toAttributePatTrans entity = toLangPatTrans $ attributeCons entity
+
+-- | Generate an action message definition pattern.
 toActionPatDef :: Text        -- ^ Entity name
                -> MesgDef     -- ^ The message definition
                -> MesgPatDef
-toActionPatDef entity (act, txt) = (actionConsP entity act, textL txt)
+toActionPatDef entity =  toMesgPatDef $ actionCons entity
+
+
+-- | Generate an attribute translation pattern.
+toActionPatTrans :: Text
+              -> LangTrans
+              -> LangPatTrans
+toActionPatTrans entity = toLangPatTrans $ attributeCons entity
+
 
 
 --
@@ -190,12 +290,12 @@ translateClause ldefs = do
   (lE     ,     lP) <- newVarEPat "l"
   (lsE    ,    lsP) <- newVarEPat "ls"
   (msgE   ,   msgP) <- newVarEPat "msg"
-                      
+
   clause [masterP
          , conP '(:) [lP,lsP]
          , msgP
          ]
-         ( guardedB $  map (langGuard lE msgE) ldefs 
+         ( guardedB $  map (langGuard lE msgE) ldefs
                     ++ [langRest masterE lsE msgE]
          )
          []
@@ -209,26 +309,33 @@ translateClause ldefs = do
 -- function
 --
 
-
 -- | The workhorse function for i18n.
-mkMessage :: TypeQ          -- ^ For which type
-          -> [LangPatTrans] -- ^ The translations, empty for default
-                            -- instance.
-          -> [MesgPatDef]   -- ^ The default definitions
-          -> DecQ
-mkMessage msgTyp trans defs = do
+mkMsg :: TypeQ          -- ^ For which type
+      -> (Text -> Text) -- ^ Function to create constructor names from
+                        -- names.
+      -> [LangTrans]    -- ^ The translations, empty for default
+                        -- instance.
+      -> [MesgDef]      -- ^ The default definitions
+      -> DecQ
+mkMsg msgTyp consGen trans defs = do
         masterT <- varT <$> newName "master"
         mkInstance [] ''RenderMessage [masterT, msgTyp]
                       [funD 'renderMessage cls]
-  where cls = if null trans then [defaultClause defs]
-                  else [translateClause trans, defaultClause defs]
+  where cls = if null trans then [defaultClause defsP]
+                 else [translateClause transP, defaultClause defsP]
+        transP = toLangPatTrans consGen <$> trans
+        defsP  = toMesgPatDef   consGen <$> defs
 
 
+
+
+
+--
 -- Parsing translations
 -- --------------------
 --
---
-                       
+
+
 
 
 -- $directoryStructure
@@ -281,8 +388,6 @@ attributeTransPath :: FilePath
 attributeTransPath base ai = base </> en </> "attribute"
    where en = T.unpack $ name ai
 
-
-
 -- | Check if the file is a valid message file.
 isMessageFile :: FilePath -> Bool
 isMessageFile f = takeExtension f == (extSeparator:"msg")
@@ -316,7 +421,6 @@ transText :: [MesgDef] -> Text
 transText = T.unlines . map sep
      where sep (f,d) = f <> ":" <> d
 
-
 parseMesgDir :: FilePath  -- ^ The directory where the transation
                           -- files are
              -> IO [LangTrans]
@@ -342,14 +446,13 @@ parseMesg dir f   = do cont  <- TIO.readFile (dir </> f)
 -- to tweak the default instance. The function will not overwrite the
 -- translation file if it already exists. Hence it is safe to put this
 -- function in your persistent entity definition.
-
 mkDefaultTransFiles :: FilePath -- ^ Base admin directory
                     -> Lang     -- ^ Which is the default language.
                     -> [AdminInterface]
                     -> Q ()
-mkDefaultTransFiles baseFP lang 
+mkDefaultTransFiles baseFP lang
   = runIO . sequence_ . map (writeTrans baseFP lang)
-   
+
 writeTrans :: FilePath -> Lang -> AdminInterface -> IO ()
 writeTrans fp lang ai = do writeButDontOverWrite actPath actTrans
                            writeButDontOverWrite attPath attTrans
@@ -357,21 +460,28 @@ writeTrans fp lang ai = do writeButDontOverWrite actPath actTrans
             attPath  = attributeTransPath fp ai </> langFile lang
             actTrans = transText $ defaultActionMesgDef ai
             attTrans = transText $ defaultAttributeMesgDef ai
-         
+
 writeButDontOverWrite :: FilePath -> Text -> IO ()
-writeButDontOverWrite fp txt 
+writeButDontOverWrite fp txt
   = do cond <- doesFileExist fp
        when (not cond) $ do
             createDirectoryIfMissing True $ dropFileName fp
             TIO.writeFile fp txt
-                                  
+
+--
+--
+-- Functions to do translation file checks
+-- ---------------------------------------
+--
+--
+--
 -- | Check action translations.
 checkActionTrans :: AdminInterface
                  -> LangTrans
-                 -> Either String LangTrans
+                 -> Q LangTrans
 checkActionTrans ai trans
-                 | not $ null err = Left err
-                 | otherwise      = Right trans
+                 | not $ null err = fail err
+                 | otherwise      = return trans
   where err     = errTrans (name ai) "Action" actions trans
         actions = fromJust $ action ai
 
@@ -379,10 +489,10 @@ checkActionTrans ai trans
 -- | Check attribute translations.
 checkAttributeTrans :: AdminInterface
                     -> LangTrans
-                    -> Either String LangTrans
+                    -> Q LangTrans
 checkAttributeTrans ai trans
-                    | not $ null err = Left err
-                    | otherwise      = Right trans
+                    | not $ null err = fail   err
+                    | otherwise      = return trans
   where err      = errTrans (name ai) "Attributes" (attributes ai) trans
 
 
@@ -403,4 +513,4 @@ errTrans en ty allNames (lang,mdefs)
         tag         = T.intercalate ":" [en, ty, lang]
         errs        = filter (not . T.null) [missing, unknown]
         mkErrs t ts = if null ts then ""
-                         else t `T.append` T.intercalate ", " ts
+                         else t <> T.intercalate ", " ts
