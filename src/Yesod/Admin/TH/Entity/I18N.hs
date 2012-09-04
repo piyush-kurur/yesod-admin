@@ -32,6 +32,7 @@ import System.FilePath
 import Text.Shakespeare.I18N
 
 import Yesod.Admin.Class
+import Yesod.Admin.Message
 import Yesod.Admin.Helpers.Text
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.TH.Error
@@ -47,15 +48,19 @@ type Text = T.Text
 -- entity @v@ in the list. Its first argument is a directory where the
 -- translation files of the entities reside (as described in the
 -- section directory structure).
-mkAdminMessageI18N :: FilePath  -- ^ Directory containing the
-                                 -- translation file
-                   -> Lang      -- ^ Default language
+mkAdminMessageI18N :: String   -- ^ Master type
+                   -> FilePath -- ^ Directory containing the
+                               -- translation file
+                   -> Lang     -- ^ Default language
                    -> [AdminInterface]
                    -> DecsQ
-mkAdminMessageI18N dir lang = sequence . concatMap mkDef
-   where mkDef ai = [ mkAttributeMsg dir lang ai
-                    , mkActionMsg dir lang ai
-                    ]
+mkAdminMessageI18N master dir lang ais = concat <$> sequence (mkDef <$> ais)
+   where mkDef ai = do
+           ascTp <- sequence [ mkAttributeMsg dir lang ai
+                             , mkActionMsg dir lang ai
+                             ]
+           colTp <- mkCollectiveMsg master dir lang ai
+           return $ concat [ascTp, colTp]
 
 -- | Generate default "RenderMessage" instances for all entities.
 --
@@ -64,7 +69,39 @@ mkAdminMessageDefault :: [AdminInterface]
 mkAdminMessageDefault = sequence . concatMap mkDef
    where mkDef ai = [ mkActionMesgDefault ai
                     , mkAttributeMesgDefault ai
+                    , mkCollectiveMsgDefault ai
                     ]
+
+mkCollectiveMsg :: String         -- ^ master type name
+                -> FilePath
+                -> Lang
+                -> AdminInterface
+                -> DecsQ
+mkCollectiveMsg master dir lang ai = do
+  (:) <$> typeDef <*> mkMessageFor master typeName path lang
+
+  where typeDef  = tySynD (mkName typeName) []
+                          [t| Collective $(conT (mkNameT en)) |]
+        en       = name ai
+        typeName = T.unpack en <> "Collective"
+        path     = collectiveTransPath dir ai
+
+-- | Generate default instance of collective.
+mkCollectiveMsgDefault :: AdminInterface
+                       -> DecQ
+mkCollectiveMsgDefault ai = do
+  master <- newName "master"
+  mkInstance [] ''RenderMessage [ varT master
+                                , [t| Collective $(enType) |]
+                                ]
+                  [rm]
+
+
+  where enType = conT $ mkNameT $ name ai
+        rm     = funD 'renderMessage [cls]
+        cls    = clause [wildP, wildP]
+                        (normalB $ varE 'defaultRenderCollective)
+                        []
 
 -- | Create 'RenderMessage' instance for @'Action'@.
 mkActionMsg :: FilePath
@@ -386,6 +423,13 @@ attributeTransPath :: FilePath
                    -> AdminInterface
                    -> FilePath
 attributeTransPath base ai = base </> en </> "attribute"
+   where en = T.unpack $ name ai
+
+-- | Path to the tranlation files of collective
+collectiveTransPath :: FilePath
+                    -> AdminInterface
+                    -> FilePath
+collectiveTransPath base ai = base </> en  </> "collective"
    where en = T.unpack $ name ai
 
 -- | Check if the file is a valid message file.
