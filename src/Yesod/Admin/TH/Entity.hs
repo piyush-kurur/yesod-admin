@@ -11,8 +11,8 @@ Module to generate admin code for persistent entries.
 -}
 
 module Yesod.Admin.TH.Entity
-       (
-         mkAdminInstances
+       ( AdminInterface(..)
+       , mkAdminInstances
        , deriveInlineDisplay
        , deriveAttributeDisplay
        , deriveAdministrable
@@ -222,6 +222,37 @@ defDBAction ai = singleArgFunc 'dbAction
                   | otherwise       = conE 'DBCustom `appE` actFunc act
           actFunc act = varE $ mkNameT $ actionFunctionName en act
 
+{-
 
+This class is not really required; we do not export it. However, this
+cleans up some ugly TH code.
 
+-}
+
+class ToTH a where
+  toTH :: a -> Q Exp
+
+instance ToTH Text where
+  toTH = textL
+
+instance ToTH a => ToTH [a] where
+  toTH  = listE . map toTH
+
+instance ToTH a => ToTH (Maybe a) where
+  toTH (Just x) =  [e| Just $(toTH x) |]
+  toTH (Nothing) = [e| Nothing |]
+
+-- | Wrap an admin interface into TH code.
+
+adminInterfaceToTH :: AdminInterface -> ExpQ
+adminInterfaceToTH ai = [e|
+      AdminInterface { name         = $(toTH $ name     ai)
+                     , action       = $(toTH $ action   ai)
+                     , inline       = $(toTH $ inline   ai)
+                     , list         = $(toTH $ list     ai)
+                     , readPage     = $(toTH $ readPage ai)
+                     , dbAttrs      = $(toTH $ dbAttrs  ai)
+                     , derivedAttrs = $(toTH $ derivedAttrs ai)
+                     }
+     |]
 
