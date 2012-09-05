@@ -12,7 +12,8 @@ Module to generate admin code for persistent entries.
 
 module Yesod.Admin.TH.Entity
        ( AdminInterface(..)
-       , mkAdminInstances
+       , mkPersistAdmin
+       , mkPersistAdminData
        , deriveInlineDisplay
        , deriveAttributeDisplay
        , deriveAdministrable
@@ -21,6 +22,7 @@ module Yesod.Admin.TH.Entity
 import Control.Applicative
 import qualified Data.Text as T
 import Data.Maybe
+import Data.Either
 import Database.Persist.EntityDef
 import Language.Haskell.TH
 
@@ -28,16 +30,45 @@ import Yesod.Admin.Types
 import Yesod.Admin.Class
 import Yesod.Admin.TH.Helpers
 import Yesod.Admin.TH.Entity.AdminInterface
+import Yesod.Admin.TH.Entity.I18N
 
 type Text = T.Text
 
--- | To use the crud and selection subsites of an entity, we need to
--- derive a few instances for an entity. This combinator derives a
--- default instance for all the entities specified in its
--- argument. Typically you would want to use this with the persist
--- quasi-quoter.
-mkAdminInstances :: [EntityDef] -> DecsQ
-mkAdminInstances edefs =  mkAdminInstances' edefs
+-- | This function generates all the required instances required to
+-- generate the crud and selection subsites of an entity.
+mkPersistAdmin  :: [EntityDef] -> DecsQ
+mkPersistAdmin edefs = do
+  ais   <- handlerErrs $ entityDefToInterface <$> edefs
+  insts <- mkPersistAdmin' ais
+  msgs  <- mkAdminMessageDefault ais
+  return $ insts ++ msgs
+  
+
+-- | This is similar to @`mkPersistAdmin`@ however it does not
+-- generate the `RenderMessage` instance for types @`Attribute`@
+-- @`Action`@ and @`Collective`@. Use this if you want to i18n and or
+-- customisation. See module "Yesod.Admin.TH.Entity.I18N" for details.
+mkPersistAdminData :: [EntityDef] -> DecsQ
+mkPersistAdminData edefs = do
+  ais   <- handlerErrs $ entityDefToInterface <$> edefs
+  mkPersistAdmin' ais
+  
+
+handlerErrs :: [Either String b] -> Q [b]
+handlerErrs es | null errs = return bs
+               | otherwise = fail $ unlines errs
+  where (errs,bs) = partitionEithers es
+        
+mkPersistAdmin' :: [AdminInterface]
+                -> DecsQ
+mkPersistAdmin' ais = sequence $ aisDec : concatMap genCode ais
+  where aisDec      = valD (varP $ mkName "entityInterfaces")
+                           (normalB $ adminInterfaceList ais)
+                           []
+        genCode ai  = [ deriveAdministrable' ai
+                      , deriveInlineDisplay' ai
+                      , deriveAttributeDisplay' ai
+                      ]
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
 -- the AdminInterface for @v@.
@@ -256,3 +287,5 @@ adminInterfaceToTH ai = [e|
                      }
      |]
 
+adminInterfaceList :: [AdminInterface] -> ExpQ
+adminInterfaceList = listE . map adminInterfaceToTH

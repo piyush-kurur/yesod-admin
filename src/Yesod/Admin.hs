@@ -22,7 +22,7 @@ module Yesod.Admin
          module Yesod.Admin.Class
        , module Yesod.Admin.Types
        , module Yesod.Admin.TH
-     --  , module Yesod.Admin.Dispatch
+       -- , module Yesod.Admin.Dispatch
        , module Yesod.Admin.Routes
        , module Yesod.Admin.Render
        --, module Yesod.Admin.Handlers
@@ -92,7 +92,7 @@ default administrative setting is used. Details on how to modify
 administrative setting is available in the documentation for the
 module "Yesod.Admin.TH.Entity.AdminInterface".
 
-> share [ mkAdminClasses
+> share [ mkPersistAdmin
 >       , mkPersist sqlSettings
 >       , mkMigrate "migrateAll"
 >       ]
