@@ -22,13 +22,10 @@ Library
   Exposed-modules: Yesod.Admin
                  , Yesod.Admin.Class
                  , Yesod.Admin.Types
-                 , Yesod.Admin.Routes
-                 , Yesod.Admin.Dispatch
                  , Yesod.Admin.TH
                  , Yesod.Admin.TH.Entity
                  , Yesod.Admin.TH.Entity.AdminInterface
                  , Yesod.Admin.TH.Entity.I18N
-                 , Yesod.Admin.TH.Error
                  , Yesod.Admin.Message
                  , Yesod.Admin.Message.English
                  , Yesod.Admin.Render
@@ -39,7 +36,9 @@ Library
   Other-modules: Yesod.Admin.Helpers.Text
                , Yesod.Admin.Resource
                , Yesod.Admin.TH.Helpers
---                , Yesod.Admin.Handlers.Helpers
+               , Yesod.Admin.Routes
+               , Yesod.Admin.Dispatch
+               , Yesod.Admin.TH.Error
                , Yesod.Admin.Handlers.Internal
                , Yesod.Admin.Handlers.Internal.Helpers
                , Yesod.Admin.Handlers.Internal.CreateR
