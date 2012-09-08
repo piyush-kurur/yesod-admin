@@ -2,17 +2,27 @@
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+{-| 
+
+This module deals with parsing and processing the admin interface of
+entities. We describe the conventions used in the admin section of a
+persistent entry definition.
+
+
+-}
 module Yesod.Admin.TH.Entity.AdminInterface
        (
        -- * The admin section
        -- $adminSection
-
+       -- * Attributes
+       -- $Attributes
+       -- * Actions
+       -- $Actions
          AdminInterface(..)
        , attributes
        , entityDefToInterface
        , withEntityDefs
-       -- * Attributes
-       -- $Attributes
+       -- Attributes
        , isDB
        , isDerived
        , attributeCons
@@ -22,8 +32,7 @@ module Yesod.Admin.TH.Entity.AdminInterface
        , attributeFunctionName
        , withoutSortOpt
        , getSortOpt
-       -- * Actions
-       -- $Actions
+       -- Actions
        , isDelete
        , isUpdate
        , isCustomAction
