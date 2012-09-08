@@ -200,6 +200,25 @@ defaultActionMesgDef ai = [ (a, defaultMessage a) | a <- fromJust $ action ai ]
 defaultAttributeMesgDef :: AdminInterface -> [MesgDef]
 defaultAttributeMesgDef ai = [ (a, defaultMessage a) | a <- attributes ai ]
 
+-- | The default collective definition.
+defaultCollectiveMesgDef :: AdminInterface
+                         -> [MesgDef]
+defaultCollectiveMesgDef ai = [ ("Singular", en)
+                              , ("Plural", plural)
+                              , ("Collection n@Int", showCol)
+                              , ("Range s@Int e@Int n@Int", showRange)
+                              ]
+  where en      = name ai
+        plural  = en <> "s"
+        showCol = T.unwords ["#{singularPlural n"
+                            , T.pack $ show en
+                            , T.pack $ show plural
+                            , "}"
+                            ]
+        showRange = "#{s} to #{e} of "
+                  <> showCol
+
+
 -- | Given a function to generate the constructor name and a message
 -- definition, returns message definition pattern.
 toMesgPatDef :: (Text -> Text)  -- ^ constructor generator
@@ -485,11 +504,10 @@ parseMesg dir f   = do cont  <- TIO.readFile (dir </> f)
                          ]
 
 -- | Given an administrative interface this function generates the
--- default translation files for the `Action` and `Attribute`
--- associated type of the entity. This function is useful if you want
--- to tweak the default instance. The function will not overwrite the
--- translation file if it already exists. Hence it is safe to put this
--- function in your persistent entity definition.
+-- default translation files for the entity. This function is useful
+-- if you want to tweak the default instance. The function will not
+-- overwrite the translation file if it already exists. Hence it is
+-- safe to put this function in your persistent entity definition.
 mkDefaultTransFiles :: FilePath -- ^ Base admin directory
                     -> Lang     -- ^ Which is the default language.
                     -> [AdminInterface]
@@ -500,10 +518,15 @@ mkDefaultTransFiles baseFP lang
 writeTrans :: FilePath -> Lang -> AdminInterface -> IO ()
 writeTrans fp lang ai = do writeButDontOverWrite actPath actTrans
                            writeButDontOverWrite attPath attTrans
-      where actPath  = actionTransPath fp ai </> langFile lang
-            attPath  = attributeTransPath fp ai </> langFile lang
-            actTrans = transText $ defaultActionMesgDef ai
+                           writeButDontOverWrite colPath colTrans
+      where actPath  = actionTransPath fp ai     </> msgFile
+            attPath  = attributeTransPath fp ai  </> msgFile
+            colPath  = collectiveTransPath fp ai </> msgFile
+            msgFile  = langFile lang
+            actTrans = transText $ defaultActionMesgDef    ai
             attTrans = transText $ defaultAttributeMesgDef ai
+            colTrans = transText $ defaultCollectiveMesgDef ai
+
 
 writeButDontOverWrite :: FilePath -> Text -> IO ()
 writeButDontOverWrite fp txt

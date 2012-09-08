@@ -11,6 +11,7 @@ module Yesod.Admin.Message
        ( AdminMessage(..)
        , Collective(..)
        , defaultRenderCollective
+       , singularPlural
        ) where
 
 import Database.Persist.Store
@@ -58,25 +59,24 @@ defaultRenderCollective = render undefined
                   -> Collective v
                   -> T.Text
            render v os = case os of
-                  Collection 1 -> T.unwords [ "1"
-                                            , singular
-                                            ]
-                  Collection n -> T.unwords [ showT n
-                                            , plural
-                                            ]
+                  Collection n -> singularPlural n singular plural
                   Singular     -> singular
                   Plural       -> plural
                   Range s e t  -> T.unwords [ showT s
                                             , "to"
                                             , showT e
                                             , "of"
-                                            , render v (Collection t)
+                                            , singularPlural t singular plural
                                             ]
                where singular = unCamelCase
                               . unHaskellName
                               . entityHaskell
                               $ entityDef v
                      plural   = singular `T.append` "s"
+
+singularPlural :: Int -> T.Text -> T.Text -> T.Text
+singularPlural n s p | n == 1    = T.unwords [showT n, s]
+                     | otherwise = T.unwords [showT n, p]
 
 showT :: Show a => a -> T.Text
 showT = T.pack . show
