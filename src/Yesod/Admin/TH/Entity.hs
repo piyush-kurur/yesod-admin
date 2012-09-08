@@ -35,7 +35,10 @@ import Yesod.Admin.TH.Entity.I18N
 type Text = T.Text
 
 -- | This function generates all the required instances required to
--- generate the crud and selection subsites of an entity.
+-- generate the crud and selection subsites of an entity. Besides it
+-- defines a variable @entityInterfaces@, which consists of the the
+-- administrative interfaces of all the entities. This can be used
+-- latter on when creating the main admin page.
 mkPersistAdmin  :: [EntityDef] -> DecsQ
 mkPersistAdmin edefs = do
   ais   <- handlerErrs $ entityDefToInterface <$> edefs
@@ -46,8 +49,11 @@ mkPersistAdmin edefs = do
 
 -- | This is similar to @`mkPersistAdmin`@ however it does not
 -- generate the `RenderMessage` instance for types @`Attribute`@
--- @`Action`@ and @`Collective`@. Use this if you want to i18n and or
--- customisation. See module "Yesod.Admin.TH.Entity.I18N" for details.
+-- @`Action`@ and @`Collective`@. Use this if you want to i18n and/or
+-- customisation. The variable @entityInterfaces@ is defined by this
+-- function which can be used in the function
+-- @`mkAdminMessageI18N`@. See module "Yesod.Admin.TH.Entity.I18N" for
+-- details.
 mkPersistAdminData :: [EntityDef] -> DecsQ
 mkPersistAdminData edefs = do
   ais   <- handlerErrs $ entityDefToInterface <$> edefs

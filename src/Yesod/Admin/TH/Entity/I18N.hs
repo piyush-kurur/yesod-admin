@@ -503,11 +503,12 @@ parseMesg dir f   = do cont  <- TIO.readFile (dir </> f)
                                         , not $ T.null $ T.strip x
                          ]
 
--- | Given an administrative interface this function generates the
--- default translation files for the entity. This function is useful
--- if you want to tweak the default instance. The function will not
--- overwrite the translation file if it already exists. Hence it is
--- safe to put this function in your persistent entity definition.
+-- | Given a list of administrative interfaces of entities this
+-- function generates the default translation files for the
+-- entity. This function is useful at the start of the translation
+-- process to setup the necessary directories and translation files.
+-- The function will not overwrite any translation file if it already
+-- exists. Hence, leaving it in your source code is safe.
 mkDefaultTransFiles :: FilePath -- ^ Base admin directory
                     -> Lang     -- ^ Which is the default language.
                     -> [AdminInterface]
