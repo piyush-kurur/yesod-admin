@@ -86,7 +86,7 @@ you would any other Yesod message type.
 
 Each persistent entity for which the administrative interface is
 desired is to be prepared next. The simplest way to achieve this is to
-use the template haskell function @`mkAdminClasses`@. The
+use the template haskell function @`mkPersistAdmin`@. The
 administrative properties of an entity is controlled by the optional
 section named \"Admin\". If the admin section is not present a default
 admin interfaces is created. In the example below, the type @Person@
@@ -95,8 +95,7 @@ default administrative setting is used. Details on how to modify
 administrative setting is available in the documentation for the
 module "Yesod.Admin.TH.Entity.AdminInterface".
 
-> share [ mkPersistAdmin
->       , mkPersist sqlSettings
+> share [ mkPersistAdmin sqlSettings
 >       , mkMigrate "migrateAll"
 >       ]
 >       [persist|

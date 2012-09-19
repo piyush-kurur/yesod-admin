@@ -17,8 +17,11 @@ module Yesod.Admin.TH.Helpers
        , mkEntityField
        , entityAdmin
        , getEntityAdmin
+       , selectionSubsiteAlias
+       , crudSubsiteAlias
        ) where
 
+import Data.Monoid
 import Language.Haskell.TH
 import Data.Text(Text, unpack, pack)
 import Yesod
@@ -78,6 +81,17 @@ persistType entity backend = appT (conT n) backend
       where n = mkNameT $ camelCaseUnwords [ entity
                                            , "Generic"
                                            ]
+
+
+-- | The alias for the selection subsite of an entity.
+selectionSubsiteAlias :: Text  -- ^ Entity name
+                      -> Name
+selectionSubsiteAlias n = mkNameT $ n <> "Selection"
+
+-- | The alias for crud subsite of an entity.
+crudSubsiteAlias :: Text -- ^ Entity name
+                 -> Name
+crudSubsiteAlias n = mkNameT $ n <> "Crud"
 
 
 -- | Generates the entities type alias name

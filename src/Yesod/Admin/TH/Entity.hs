@@ -24,6 +24,7 @@ import qualified Data.Text as T
 import Data.Maybe
 import Data.Either
 import Database.Persist.EntityDef
+import Database.Persist.TH (MkPersistSettings(..), mkPersist)
 import Language.Haskell.TH
 
 import Yesod.Admin.Types
@@ -34,17 +35,21 @@ import Yesod.Admin.TH.Entity.I18N
 
 type Text = T.Text
 
--- | This function generates all the required instances required to
--- generate the crud and selection subsites of an entity. Besides it
--- defines a variable @entityInterfaces@, which consists of the the
--- administrative interfaces of all the entities. This can be used
--- latter on when creating the main admin page.
-mkPersistAdmin  :: [EntityDef] -> DecsQ
-mkPersistAdmin edefs = do
-  ais   <- handlerErrs $ entityDefToInterface <$> edefs
-  insts <- mkPersistAdmin' ais
-  msgs  <- mkAdminMessageDefault ais
-  return $ insts ++ msgs
+-- | This function generates is the Admin aware version of
+-- @`mkPersist`@. It generates not only the persistent entities for
+-- your application but also declares all the all the required
+-- instances required to generate the crud and selection subsites of
+-- an entity. Besides it defines a variable @entityInterfaces@, which
+-- consists of the the administrative interfaces of all the
+-- entities. This can be used latter on when creating the main admin
+-- page.
+mkPersistAdmin  :: MkPersistSettings -> [EntityDef] -> DecsQ
+mkPersistAdmin persistSettings edefs = do
+  persist <- mkPersist persistSettings edefs
+  ais     <- handlerErrs $ entityDefToInterface <$> edefs
+  insts   <- mkPersistAdmin' ais
+  msgs    <- mkAdminMessageDefault ais
+  return  $ persist ++ insts ++ msgs
   
 
 -- | This is similar to @`mkPersistAdmin`@ however it does not
@@ -54,10 +59,12 @@ mkPersistAdmin edefs = do
 -- function which can be used in the function
 -- @`mkAdminMessageI18N`@. See module "Yesod.Admin.TH.Entity.I18N" for
 -- details.
-mkPersistAdminData :: [EntityDef] -> DecsQ
-mkPersistAdminData edefs = do
-  ais   <- handlerErrs $ entityDefToInterface <$> edefs
-  mkPersistAdmin' ais
+mkPersistAdminData :: MkPersistSettings -> [EntityDef] -> DecsQ
+mkPersistAdminData persistSettings edefs = do
+  persist <- mkPersist persistSettings edefs
+  ais     <- handlerErrs $ entityDefToInterface <$> edefs
+  insts   <- mkPersistAdmin' ais
+  return  $ persist ++ insts
   
 
 handlerErrs :: [Either String b] -> Q [b]
@@ -75,6 +82,19 @@ mkPersistAdmin' ais = sequence $ aisDec : concatMap genCode ais
                       , deriveInlineDisplay' ai
                       , deriveAttributeDisplay' ai
                       ]
+
+-- | Generate some admin aliases
+        
+mkAdminAliases :: MkPersistSettings  -- ^ The persistent setting.
+               -> [AdminInterface]   -- ^ admin interfaces.
+               -> DecsQ
+mkAdminAliases persistSettings = sequence . concatMap (mkA . name)
+  where rhs t  n = conT t `appT` backend `appT` conT (mkNameT n)
+        selTD  n = tySynD (selectionSubsiteAlias n) [] $ rhs ''Selection n
+        crudTD n = tySynD (selectionSubsiteAlias n) [] $ rhs ''Crud n
+        mkA    n = [ selTD n , crudTD n ]
+        backend = return $ mpsBackend persistSettings
+
 
 -- | Derive an instance of @`Administrable`@ for the type @v@ given
 -- the AdminInterface for @v@.

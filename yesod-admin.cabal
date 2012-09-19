@@ -66,6 +66,7 @@ Library
                , shakespeare-i18n >=1.0 && <1.1
                , hamlet >=1.0 && <1.1
                , persistent >=0.9 && <0.10
+               , persistent-template >= 0.9 && <0.10
                , directory
                , filepath
 
