@@ -58,15 +58,15 @@ Library
                , template-haskell
                , containers
                , data-default
-               , yesod >=1.0 && <1.1
-               , yesod-auth >=1.0 && <1.1
-               , yesod-form >=1.0 && <1.1
-               , yesod-routes >= 1.0 && < 1.1
-               , shakespeare-css >=1.0 && <1.1
-               , shakespeare-i18n >=1.0 && <1.1
-               , hamlet >=1.0 && <1.1
-               , persistent >=0.9 && <0.10
-               , persistent-template >= 0.9 && <0.10
+               , yesod ==1.1.*
+               , yesod-auth ==1.*
+               , yesod-form ==1.1.*
+               , yesod-routes ==1.1.*
+               , shakespeare-css ==1.0.*
+               , shakespeare-i18n ==1.0.*
+               , hamlet ==1.1.*
+               , persistent ==1.0.*
+               , persistent-template ==1.0.*
                , directory
                , filepath
 
