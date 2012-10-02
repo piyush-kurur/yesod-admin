@@ -46,7 +46,7 @@ type Text = T.Text
 mkPersistAdmin  :: MkPersistSettings -> [EntityDef] -> DecsQ
 mkPersistAdmin persistSettings edefs = do
   persist <- mkPersist persistSettings edefs
-  ais     <- handlerErrs $ entityDefToInterface <$> edefs
+  ais     <- handleErrs $ entityDefToInterface <$> edefs
   insts   <- mkPersistAdmin' ais
   msgs    <- mkAdminMessageDefault ais
   return  $ persist ++ insts ++ msgs
@@ -62,14 +62,14 @@ mkPersistAdmin persistSettings edefs = do
 mkPersistAdminData :: MkPersistSettings -> [EntityDef] -> DecsQ
 mkPersistAdminData persistSettings edefs = do
   persist <- mkPersist persistSettings edefs
-  ais     <- handlerErrs $ entityDefToInterface <$> edefs
+  ais     <- handleErrs $ entityDefToInterface <$> edefs
   insts   <- mkPersistAdmin' ais
   return  $ persist ++ insts
   
 
-handlerErrs :: [Either String b] -> Q [b]
-handlerErrs es | null errs = return bs
-               | otherwise = fail $ unlines errs
+handleErrs :: [Either String b] -> Q [b]
+handleErrs es | null errs = return bs
+              | otherwise = fail $ unlines errs
   where (errs,bs) = partitionEithers es
         
 mkPersistAdmin' :: [AdminInterface]
