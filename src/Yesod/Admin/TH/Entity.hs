@@ -26,7 +26,7 @@ import Data.Either
 import Database.Persist.EntityDef
 import Database.Persist.TH (MkPersistSettings(..), mkPersist)
 import Language.Haskell.TH
-import Language.Haskell.TH.Syntax(Lift(..))
+import Language.Haskell.TH.Syntax(lift)
 
 import Yesod.Admin.Types
 import Yesod.Admin.Class
@@ -94,7 +94,7 @@ mkPersistAdmin' :: [AdminInterface]
                 -> DecsQ
 mkPersistAdmin' ais = sequence $ aisDec : concatMap genCode ais
   where aisDec      = valD (varP $ mkName "entityInterfaces")
-                           (normalB $ adminInterfaceList ais)
+                           (normalB $ lift ais)
                            []
         genCode ai  = [ deriveAdministrable' ai
                       , deriveInlineDisplay' ai
@@ -296,23 +296,3 @@ defDBAction ai = singleArgFunc 'dbAction
                   | isUpdate act    = conE 'DBUpdate `appE` actFunc act
                   | otherwise       = conE 'DBCustom `appE` actFunc act
           actFunc act = varE $ mkNameT $ actionFunctionName en act
-
-instance Lift Text where
-  lift = textL
-
--- | Wrap an admin interface into TH code.
-
-adminInterfaceToTH :: AdminInterface -> ExpQ
-adminInterfaceToTH ai = [e|
-      AdminInterface { name         = $(lift $ name     ai)
-                     , action       = $(lift $ action   ai)
-                     , inline       = $(lift $ inline   ai)
-                     , list         = $(lift $ list     ai)
-                     , readPage     = $(lift $ readPage ai)
-                     , dbAttrs      = $(lift $ dbAttrs  ai)
-                     , derivedAttrs = $(lift $ derivedAttrs ai)
-                     }
-     |]
-
-adminInterfaceList :: [AdminInterface] -> ExpQ
-adminInterfaceList = listE . map adminInterfaceToTH

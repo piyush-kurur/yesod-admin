@@ -48,6 +48,7 @@ import Data.Either
 import Database.Persist.EntityDef
 import Database.Persist.Query
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax(Lift(..))
 import qualified Data.Text as T
 import qualified Data.Map as M
 
@@ -71,6 +72,20 @@ data AdminInterface
                       , dbAttrs   :: [Text]
                       , derivedAttrs :: [Text]
                       } deriving Show
+
+instance Lift T.Text where
+  lift = textL
+
+instance Lift AdminInterface where
+  lift ai = [e| AdminInterface { name         = $(lift $ name     ai)
+                               , action       = $(lift $ action   ai)
+                               , inline       = $(lift $ inline   ai)
+                               , list         = $(lift $ list     ai)
+                               , readPage     = $(lift $ readPage ai)
+                               , dbAttrs      = $(lift $ dbAttrs  ai)
+                               , derivedAttrs = $(lift $ derivedAttrs ai)
+                               }
+            |]
 
 -- | Get the list of attribute.
 attributes :: AdminInterface -> [Text]
