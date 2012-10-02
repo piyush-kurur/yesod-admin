@@ -37,13 +37,30 @@ import Yesod.Admin.TH.Entity.I18N
 type Text = T.Text
 
 -- | This function generates is the Admin aware version of
--- @`mkPersist`@. It generates not only the persistent entities for
--- your application but also declares all the all the required
--- instances required to generate the crud and selection subsites of
--- an entity. Besides it defines a variable @entityInterfaces@, which
--- consists of the the administrative interfaces of all the
--- entities. This can be used latter on when creating the main admin
--- page.
+-- @`mkPersist`@. Use this combinator to define and prepare your
+-- persistent entities for admin operation, provided you are happy
+-- with the default names of attributes, actions and collectives. In
+-- case you want to change them or support i18n consider using
+-- `mkPersistAdminData`.
+--
+-- The combinator generates code for the following:
+--
+--   1. Persistent entity declaration for all your entities. 
+--
+--   2. Instances of the classes `Administrable`, `InlineDisplay` and
+--      `AttributeDisplay`
+--
+--   3. `RenderMessage` instance for the associated types `Attribute`,
+--      `Action` and `Collective.
+-- 
+--   4. Type aliases for Selection and Crud sites specialised to the
+--      given backend.
+--
+-- Besides it defines a variable @entityInterfaces@, which consists of
+-- the the administrative interfaces of all the entities. This can be
+-- used latter on when creating the main admin page.
+--
+-- 
 mkPersistAdmin  :: MkPersistSettings -> [EntityDef] -> DecsQ
 mkPersistAdmin persistSettings edefs = do
   persist <- mkPersist persistSettings edefs
@@ -54,7 +71,7 @@ mkPersistAdmin persistSettings edefs = do
   
 
 -- | This is similar to @`mkPersistAdmin`@ however it does not
--- generate the `RenderMessage` instance for types @`Attribute`@
+-- generate the `RenderMessage` instance for types @`Attribute`@,
 -- @`Action`@ and @`Collective`@. Use this if you want to i18n and/or
 -- customisation. The variable @entityInterfaces@ is defined by this
 -- function which can be used in the function
