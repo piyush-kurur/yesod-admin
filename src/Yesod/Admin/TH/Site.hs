@@ -68,7 +68,7 @@ mkAdminData genSel master ens
                  als   <- mkAdminAliases genSel master ens
                  rR    <- mkRenderRouteInstance aT
                                  $ mkAdminResources genSel ens
-                 return $ rR:admin ++ als
+                 return $ rR ++ admin ++ als
    where aT = ConT $ mkName $ adminSiteType master
 
 -- | Creates a dispatch instance for an admin subsite. Used together
@@ -103,15 +103,15 @@ mkAdminAliases genSel master = fmap concat
 -- | Generate resources for an admin site given the entity names.
 mkAdminResources :: Bool       -- ^ Generate selection site or not.
                  -> [String]   -- ^ Entities
-                 -> [Resource Type]
-mkAdminResources genSel ens = concatMap mkR ens
+                 -> [ResourceTree Type]
+mkAdminResources genSel ens = map mkR ens
     where mkR  = mkEntityResource genSel
 
 mkEntityResource :: Bool   -- ^ Generate selection site or not
                  -> String -- ^ Entity
-                 -> [Resource Type]
-mkEntityResource genSel en | genSel    = [sr]
-                           | otherwise = [cr]
+                 -> ResourceTree Type
+mkEntityResource genSel en | genSel    = ResourceLeaf sr
+                           | otherwise = ResourceLeaf cr
       where mkR c ps ty = Resource c [(True, Static p)| p <- ps]
                           $ Subsite (ConT $ mkName ty)
                                     (getFuncName ty)
