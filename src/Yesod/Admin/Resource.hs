@@ -21,6 +21,7 @@ module Yesod.Admin.Resource
        , mkAdminDispatch
        ) where
 
+import Control.Applicative
 import Yesod hiding (get)
 import Language.Haskell.TH
 import Yesod.Routes.TH
@@ -49,8 +50,8 @@ The routes are
 -- which is an instance of @'PersistQuery'@.
 selectionResources :: Type      -- ^ The selection backend type.
                    -> String    -- ^ entity
-                   -> [Resource Type]
-selectionResources backend v =
+                   -> [ResourceTree Type]
+selectionResources backend v = map ResourceLeaf
         [ Resource "CrudR"   []  crudDispatch
         , Resource "ListR"   (string "selection") get
         , Resource "PageR"   [stringP "selection", intP] get
@@ -62,8 +63,8 @@ selectionResources backend v =
 -- which is an instance of @'PersistStore'@.
 crudResources :: Type     -- ^ The crud backend type
               -> String   -- ^ Entity type
-              -> [Resource Type]
-crudResources backend v =
+              -> [ResourceTree Type]
+crudResources backend v = map ResourceLeaf
         [ Resource "ReadR"   key $ get
         , Resource "CreateR" (string "create") $ getPost
         , Resource "UpdateR" (onKey "update" ) $ getPost
@@ -78,7 +79,8 @@ mkAdminRoutes :: String         -- ^ Backend type (variable)
               -> String         -- ^ Entity
               -> DecsQ
 mkAdminRoutes b v
-      = sequence [ mkI (crudType bT v)
+      = concat <$>
+        sequence [ mkI (crudType bT v)
                        (crudResources bT v)
                  , mkI (selectionType bT v)
                        $ selectionResources bT v
@@ -141,7 +143,7 @@ stringP s        = (True, Static s)
 intP             = (True, Dynamic $ ConT ''Int)
 keyP backend val = (True, Dynamic $ keyT backend val)
 
-keyT :: Type     -- ^ The backedn type
+keyT :: Type     -- ^ The backend type
      -> String   -- ^ The entity
      -> Type
 keyT backend val = ConT ''Key `AppT` backend `AppT` v
@@ -161,14 +163,19 @@ selectionType = adminType $ mkName "Selection"
 mkDispatchInstance :: CxtQ       -- ^ The context
                    -> TypeQ      -- ^ subsite
                    -> TypeQ      -- ^ master
-                   -> [Resource Type] -- ^ The resource
+                   -> [ResourceTree Type] -- ^ The resource
                    -> DecQ
 mkDispatchInstance context sub master res = instanceD context
                                                       yDispatch
                                                       [thisDispatch]
-        where clauses  = mkDispatchClause [|yesodRunner|]
-                                          [|yesodDispatch|]
-                                          [|fmap chooseRep|]
-                                          res
-              thisDispatch    = funD 'yesodDispatch [clauses]
+        where logger  = mkName "logger"
+              loggerE = varE logger
+              loggerP = VarP logger
+              thisDispatch = do 
+                Clause pat body decs <-  mkDispatchClause 
+                                         [|yesodRunner   $loggerE |]
+                                         [|yesodDispatch $loggerE |]
+                                         [|fmap chooseRep|]
+                                         res
+                return $ FunD 'yesodDispatch [Clause (loggerP:pat) body decs]
               yDispatch = conT ''YesodDispatch `appT` sub `appT` master
