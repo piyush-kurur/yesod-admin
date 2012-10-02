@@ -109,7 +109,7 @@ mkAdminAliases :: MkPersistSettings  -- ^ The persistent setting.
 mkAdminAliases persistSettings = sequence . concatMap (mkA . name)
   where rhs t  n = conT t `appT` backend `appT` conT (mkNameT n)
         selTD  n = tySynD (selectionSubsiteAlias n) [] $ rhs ''Selection n
-        crudTD n = tySynD (selectionSubsiteAlias n) [] $ rhs ''Crud n
+        crudTD n = tySynD (crudSubsiteAlias n)      [] $ rhs ''Crud n
         mkA    n = [ selTD n , crudTD n ]
         backend = return $ mpsBackend persistSettings
 
