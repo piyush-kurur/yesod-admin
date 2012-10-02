@@ -36,7 +36,7 @@ import Yesod.Admin.Class
 
 -- $basicIdea
 --
--- Let @Site@ by your foundation type. The TH code in this module
+-- Let @Site@ be your foundation type. The TH code in this module
 -- helps create the subsite data type @SiteAdmin@. The crud/selection
 -- subsites for each entity will occur as subsites of @SiteAdmin@. All
 -- that is left for the user is to hook @SiteAdmin@ as a subsite of
