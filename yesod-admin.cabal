@@ -16,6 +16,9 @@ Maintainer: ppk@cse.iitk.ac.in
 Category: Web, Yesod
 Build-type: Simple
 Cabal-version: >=1.2
+
+Bug-reports: https://github.com/piyush-kurur/yesod-admin/issues
+
 Library
   Hs-source-dirs: src
   GHC-Options: -Wall
