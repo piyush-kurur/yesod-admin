@@ -1,6 +1,10 @@
 Yesod Admin
 -----------
 
+NOTE: I am giving up on this project please see
+
+<https://github.com/piyush-kurur/yesod-admin/issues/4>
+
 The aim is to provide a admin interface to persistent data types. I am
 happy to receive your comments/suggestion/patches. In case you want to
 report a bug or demand a feature please open an issue on github.
@@ -17,7 +21,7 @@ Here are few things I would like of an admin site.
 
   3. As much as possible stick to the Yesod philosophy (type safety
      etc.)
-  
+
   4. Simple yet flexible themeing options: If the site has to look
      pretty there should be lots of thought on the underlying
      CSS/JavaScripts etc.  I would like to separate, as much as
